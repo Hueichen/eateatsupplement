@@ -175,6 +175,16 @@ function productTags(p) {
   return Array.from(new Set(p.tags || []));
 }
 
+/* 相容舊資料：舊版備品把推薦者寫在備註文字裡（例如「推薦者：貓貓」），這裡做個備援解析 */
+function getRecommender(p) {
+  if (p.recommender) return p.recommender;
+  if (p.note) {
+    const m = p.note.match(/推薦者[：:]\s*([^｜\n]+)/);
+    if (m) return m[1].trim();
+  }
+  return "";
+}
+
 /* 將 amount 從 fromUnit 換算成 toUnit（僅支援公制重量單位互換），無法換算回傳 null */
 function convertAmount(amount, fromUnit, toUnit) {
   if (!fromUnit || !toUnit) return null;
@@ -263,11 +273,6 @@ function excelRowToProduct(row) {
     if (amount === undefined || amount === null || amount === "" || Number.isNaN(amount)) return;
     ingredients.push({ name: targetName, amount: String(amount), unit: row[unitCol] || "" });
   });
-  const noteParts = [];
-  if (row["規格"]) noteParts.push(`規格：${row["規格"]}`);
-  if (row["劑型"]) noteParts.push(`劑型：${row["劑型"]}`);
-  if (row["購買通路"]) noteParts.push(`購買通路：${row["購買通路"]}`);
-  if (row["備註"]) noteParts.push(row["備註"]);
   const tags = ["標籤1", "標籤2", "標籤3", "標籤4"].map((c) => row[c]).filter((v) => v !== undefined && v !== null && String(v).trim() !== "").map((v) => String(v).trim());
   return {
     brand: String(row["品牌"] || "").trim(),
@@ -275,7 +280,10 @@ function excelRowToProduct(row) {
     image: "",
     link: "",
     dailyDose: "",
-    note: noteParts.join("｜"),
+    spec: row["規格"] ? String(row["規格"]).trim() : "",
+    form: row["劑型"] ? String(row["劑型"]).trim() : "",
+    channel: row["購買通路"] ? String(row["購買通路"]).trim() : "",
+    note: row["備註"] ? String(row["備註"]).trim() : "",
     tags,
     recommender: row["推薦者"] ? String(row["推薦者"]).trim() : "",
     ingredients,
@@ -810,19 +818,20 @@ function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggle
       </div>
       <p style={styles.helperText}>這是公用備品資料庫，所有人都能瀏覽；登入後才能新增或刪除自己登錄的項目。缺貨時可快速比較各品牌備品，勾選「試算」可列出勾選品項的總元素表並標示是否超過每日用量，也會一併比對現有保健品。</p>
 
-      <div style={styles.sortRow}>
-        <span style={styles.sortLabel}>排序：</span>
-        <button onClick={() => setSortMode("recent")} style={{ ...styles.filterChip, ...(sortMode === "recent" ? styles.filterChipActive : {}) }}>最新登錄</button>
-        <button onClick={() => setSortMode("name")} style={{ ...styles.filterChip, ...(sortMode === "name" ? styles.filterChipActive : {}) }}>名稱（A→Z／筆畫少→多）</button>
-      </div>
-
-      {allTags.length > 1 && (
-        <div style={styles.filterRow}>
-          {allTags.map((t) => (
-            <button key={t} onClick={() => setTagFilter(t)} style={{ ...styles.filterChip, ...(tagFilter === t ? styles.filterChipActive : {}) }}>{t}</button>
-          ))}
+      <div style={styles.toolbarRow}>
+        {allTags.length > 1 ? (
+          <div style={styles.filterRowInline}>
+            {allTags.map((t) => (
+              <button key={t} onClick={() => setTagFilter(t)} style={{ ...styles.filterChip, ...(tagFilter === t ? styles.filterChipActive : {}) }}>{t}</button>
+            ))}
+          </div>
+        ) : <div />}
+        <div style={styles.sortGroup}>
+          <span style={styles.sortLabel}>排序：</span>
+          <button onClick={() => setSortMode("recent")} style={{ ...styles.filterChip, ...(sortMode === "recent" ? styles.filterChipActive : {}) }}>最新登錄</button>
+          <button onClick={() => setSortMode("name")} style={{ ...styles.filterChip, ...(sortMode === "name" ? styles.filterChipActive : {}) }}>名稱（A→Z／筆畫少→多）</button>
         </div>
-      )}
+      </div>
 
       {productLibrary.length === 0 && <EmptyState text="還沒有任何人登錄備品。登入後點「登錄備品」記錄品牌、名稱、成分、購買連結與每日用量，缺貨時大家都能快速挑選替代品。" />}
       {productLibrary.length > 0 && filteredLibrary.length === 0 && <EmptyState text="這個標籤下沒有備品，換一個標籤看看。" />}
@@ -838,7 +847,7 @@ function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggle
             <div key={p.id} style={{ ...styles.shopCard, ...(inCompare ? styles.productCardActive : {}) }}>
               <div style={styles.shopThumbWrap}>
                 <ProductThumb src={p.image} square />
-                {p.recommender && p.recommender.includes("貓貓") && (
+                {getRecommender(p).includes("貓貓") && (
                   <div style={styles.catBadge} title="貓貓推薦"><ICat size={14} color="#fff" /></div>
                 )}
                 {canDelete && (
@@ -927,11 +936,15 @@ function ComparePanel({ compareProducts, mySupplements }) {
 function ProductDetailModal({ product, onClose }) {
   const p = product;
   const tags = productTags(p);
+  const recommender = getRecommender(p);
   const otherLines = [
     p.brand && ["品牌", p.brand],
     p.dailyDose && ["每日用量", p.dailyDose],
+    p.spec && ["規格", p.spec],
+    p.form && ["劑型", p.form],
+    p.channel && ["購買通路", p.channel],
     tags.length > 0 && ["標籤", tags.join("、")],
-    p.recommender && ["推薦者", p.recommender],
+    recommender && ["推薦者", recommender],
     p.ownerName && ["登錄者", p.ownerName],
     p.note && ["備註", p.note],
   ].filter(Boolean);
@@ -944,7 +957,7 @@ function ProductDetailModal({ product, onClose }) {
           <button onClick={onClose} style={styles.iconBtnGhost}><IX size={18} color={C.muted} /></button>
         </div>
 
-        <ProductThumb src={p.image} square />
+        {p.image && <ProductThumb src={p.image} square />}
 
         {p.ingredients && p.ingredients.length > 0 && (
           <div style={styles.nutritionBox}>
@@ -1125,6 +1138,9 @@ function AddProductModal({ onClose, onAdd }) {
   const [image, setImage] = useState("");
   const [link, setLink] = useState("");
   const [dailyDose, setDailyDose] = useState("");
+  const [spec, setSpec] = useState("");
+  const [form, setForm] = useState("");
+  const [channel, setChannel] = useState("");
   const [note, setNote] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [recommender, setRecommender] = useState("");
@@ -1134,7 +1150,7 @@ function AddProductModal({ onClose, onAdd }) {
     if (!name.trim()) return;
     onAdd({
       brand: brand.trim(), name: name.trim(), image: image.trim(), link: link.trim(),
-      dailyDose: dailyDose.trim(), note: note.trim(),
+      dailyDose: dailyDose.trim(), spec: spec.trim(), form: form.trim(), channel: channel.trim(), note: note.trim(),
       tags: tagsInput.split(/[,，]/).map((t) => t.trim()).filter(Boolean),
       recommender: recommender.trim(),
       ingredients: ingredients.filter((ing) => ing.name.trim()).map((ing) => ({ name: ing.name.trim(), amount: ing.amount.trim(), unit: ing.unit })),
@@ -1156,6 +1172,12 @@ function AddProductModal({ onClose, onAdd }) {
         <IngredientEditor ingredients={ingredients} onChange={setIngredients} />
         <label style={styles.label}>每日用量</label>
         <input style={styles.input} value={dailyDose} onChange={(e) => setDailyDose(e.target.value)} placeholder="例如：每日1顆，隨餐服用" />
+        <label style={styles.label}>規格（選填）</label>
+        <input style={styles.input} value={spec} onChange={(e) => setSpec(e.target.value)} placeholder="例如：90粒軟膠囊" />
+        <label style={styles.label}>劑型（選填）</label>
+        <input style={styles.input} value={form} onChange={(e) => setForm(e.target.value)} placeholder="例如：軟膠囊" />
+        <label style={styles.label}>購買通路（選填）</label>
+        <input style={styles.input} value={channel} onChange={(e) => setChannel(e.target.value)} placeholder="例如：iHerb" />
         <label style={styles.label}>標籤（選填，用逗號分隔）</label>
         <input style={styles.input} value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} placeholder="例如：魚油, 維生素, 複方" />
         <label style={styles.label}>推薦者（選填）</label>
@@ -1241,7 +1263,10 @@ const styles = {
   timeChipSelectable: { fontSize: 20.5, background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: "6px 14px", color: C.muted, cursor: "pointer", fontWeight: 600 },
   timeChipSelected: { background: C.pine, color: "#fff", borderColor: C.pine },
   filterRow: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 },
+  filterRowInline: { display: "flex", gap: 6, flexWrap: "wrap" },
+  toolbarRow: { display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 14 },
   sortRow: { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 12 },
+  sortGroup: { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginLeft: "auto" },
   sortLabel: { fontSize: 15, color: C.muted, fontWeight: 600 },
   filterChip: { fontSize: 18.5, background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "6px 12px", color: C.muted, cursor: "pointer", fontWeight: 600 },
   filterChipActive: { background: C.ink, color: "#fff", borderColor: C.ink },
