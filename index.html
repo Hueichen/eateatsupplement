@@ -314,6 +314,15 @@ const todayKey = () => {
 };
 const uid = () => Math.random().toString(36).slice(2, 10);
 
+/* 名稱排序：英文 A→Z，中文依筆畫由少到多（瀏覽器內建 Unicode 排序，Chrome/Edge 支援度較完整） */
+let nameCollator;
+try {
+  nameCollator = new Intl.Collator(["zh-Hant-u-co-stroke", "zh-u-co-stroke", "en"], { numeric: true, sensitivity: "base" });
+} catch (e) {
+  nameCollator = { compare: (a, b) => String(a).localeCompare(String(b)) };
+}
+const sortByName = (list, key) => [...list].sort((a, b) => nameCollator.compare(key(a) || "", key(b) || ""));
+
 /* =========================================================
    登入畫面 / 尚未設定 Firebase 的提示
    ========================================================= */
@@ -658,6 +667,8 @@ function IntakeTable({ intake, title, helper }) {
 
 function MineView({ mySupplements, onAdd, onRemove, onEdit }) {
   const intake = React.useMemo(() => summarizeIntake(mySupplements), [mySupplements]);
+  const [sortMode, setSortMode] = useState("recent");
+  const sortedSupplements = sortMode === "name" ? sortByName(mySupplements, (s) => s.name) : mySupplements;
   return (
     <div>
       <div style={styles.sectionHeadRow}>
@@ -669,9 +680,17 @@ function MineView({ mySupplements, onAdd, onRemove, onEdit }) {
         <IntakeTable intake={intake} title="目前攝取元素總表" helper="依「我的保健品」清單中登記的成分加總，估算目前每日總攝取量，並比對建議上限。" />
       )}
 
+      {mySupplements.length > 1 && (
+        <div style={styles.sortRow}>
+          <span style={styles.sortLabel}>排序：</span>
+          <button onClick={() => setSortMode("recent")} style={{ ...styles.filterChip, ...(sortMode === "recent" ? styles.filterChipActive : {}) }}>新增順序</button>
+          <button onClick={() => setSortMode("name")} style={{ ...styles.filterChip, ...(sortMode === "name" ? styles.filterChipActive : {}) }}>名稱（A→Z／筆畫少→多）</button>
+        </div>
+      )}
+
       {mySupplements.length === 0 && <EmptyState text="還沒有加入任何保健品。點右上角「新增」，可從備品庫或成分資料庫帶入，或手動輸入。" />}
       <div style={styles.cardList}>
-        {mySupplements.map((s) => {
+        {sortedSupplements.map((s) => {
           const hasServings = s.remainingServings !== undefined && s.remainingServings !== null && s.remainingServings !== "";
           const low = hasServings && Number(s.remainingServings) <= 5;
           const empty = hasServings && Number(s.remainingServings) <= 0;
@@ -759,6 +778,7 @@ function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggle
   const trialIntake = React.useMemo(() => summarizeIntake(compareProducts), [compareProducts]);
   const fileInputRef = React.useRef(null);
   const [tagFilter, setTagFilter] = useState("全部");
+  const [sortMode, setSortMode] = useState("recent"); // recent | name
 
   const allTags = React.useMemo(() => {
     const set = new Set();
@@ -766,7 +786,8 @@ function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggle
     return ["全部", ...Array.from(set)];
   }, [productLibrary]);
 
-  const filteredLibrary = tagFilter === "全部" ? productLibrary : productLibrary.filter((p) => productTags(p).includes(tagFilter));
+  let filteredLibrary = tagFilter === "全部" ? productLibrary : productLibrary.filter((p) => productTags(p).includes(tagFilter));
+  if (sortMode === "name") filteredLibrary = sortByName(filteredLibrary, (p) => p.name);
 
   return (
     <div>
@@ -786,6 +807,12 @@ function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggle
         </div>
       </div>
       <p style={styles.helperText}>這是公用備品資料庫，所有人都能瀏覽；登入後才能新增或刪除自己登錄的項目。缺貨時可快速比較各品牌備品，勾選「試算」可列出勾選品項的總元素表並標示是否超過每日用量，也會一併比對現有保健品。</p>
+
+      <div style={styles.sortRow}>
+        <span style={styles.sortLabel}>排序：</span>
+        <button onClick={() => setSortMode("recent")} style={{ ...styles.filterChip, ...(sortMode === "recent" ? styles.filterChipActive : {}) }}>最新登錄</button>
+        <button onClick={() => setSortMode("name")} style={{ ...styles.filterChip, ...(sortMode === "name" ? styles.filterChipActive : {}) }}>名稱（A→Z／筆畫少→多）</button>
+      </div>
 
       {allTags.length > 1 && (
         <div style={styles.filterRow}>
@@ -1148,6 +1175,8 @@ const styles = {
   timeChipSelectable: { fontSize: 20.5, background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: "6px 14px", color: C.muted, cursor: "pointer", fontWeight: 600 },
   timeChipSelected: { background: C.pine, color: "#fff", borderColor: C.pine },
   filterRow: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 },
+  sortRow: { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 12 },
+  sortLabel: { fontSize: 15, color: C.muted, fontWeight: 600 },
   filterChip: { fontSize: 18.5, background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "6px 12px", color: C.muted, cursor: "pointer", fontWeight: 600 },
   filterChipActive: { background: C.ink, color: "#fff", borderColor: C.ink },
   nutrientCard: { background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 },
