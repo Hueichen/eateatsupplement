@@ -16,6 +16,7 @@
   .app-inner { width: 100%; margin: 0 auto; }
 
   .product-grid { display: grid; grid-template-columns: 1fr; gap: 14px; align-items: start; }
+  .product-grid > * { min-width: 0; }
   @media (min-width: 640px) {
     .product-grid { grid-template-columns: repeat(2, 1fr); }
   }
@@ -1166,7 +1167,7 @@ const styles = {
   productBrand: { fontSize: 17, color: C.amber, fontWeight: 700 },
   productName: { fontSize: 23, fontWeight: 700, marginTop: 1 },
   productNameClamp: { fontSize: 23, fontWeight: 700, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  productGrid: { display: "flex", flexDirection: "column", gap: 10 },
+  productGrid: {},
   tagChip: { fontSize: 15, background: "#E1F8F5", border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 10px", color: C.pine, fontWeight: 600 },
   productOwner: { fontSize: 16.5, color: C.muted, marginTop: 3 },
   thumbImg: { borderRadius: 10, objectFit: "cover", border: `1px solid ${C.line}`, flexShrink: 0 },
