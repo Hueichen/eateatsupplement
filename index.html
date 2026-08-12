@@ -3,13 +3,33 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-<title>保健品管理系統</title>
+<title>來吃保健品</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700;900&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; }
-  body { margin: 0; }
+  html, body { margin: 0; background: #F17C67; }
   input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.6; }
+
+  .app-shell { width: 100%; }
+  .app-main { width: 100%; margin: 0 auto; }
+  .app-inner { width: 100%; margin: 0 auto; }
+
+  @media (min-width: 860px) {
+    body { padding: 32px 16px; }
+    .app-shell {
+      max-width: 1080px;
+      margin: 0 auto;
+      border: 1px solid rgba(255,255,255,0.35);
+      border-radius: 20px;
+      box-shadow: 0 16px 44px rgba(120,50,35,0.28);
+      overflow: hidden;
+    }
+    .app-main { max-width: 900px; padding-left: 32px; padding-right: 32px; }
+    .app-inner { max-width: 900px; padding-left: 32px; padding-right: 32px; }
+    .app-modal-overlay { align-items: center !important; }
+    .app-modal-card { max-width: 560px !important; border-radius: 20px !important; max-height: 88vh !important; }
+  }
 </style>
 </head>
 <body>
@@ -31,6 +51,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.16.0/firebase-app-compat.min.js" crossorigin></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.16.0/firebase-auth-compat.min.js" crossorigin></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.16.0/firebase-firestore-compat.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin></script>
 
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useMemo } = React;
@@ -88,49 +109,164 @@ const IImageOff = (p) => <Icon {...p}><path d="M4 4l16 16"/><path d="M21 15V6a2 
 const IListChecks = (p) => <Icon {...p}><polyline points="3 6 4.5 7.5 7 5"/><polyline points="3 13 4.5 14.5 7 12"/><line x1="11" y1="6" x2="21" y2="6"/><line x1="11" y1="13" x2="21" y2="13"/><line x1="11" y1="20" x2="21" y2="20"/><line x1="3" y1="20" x2="7" y2="20"/></Icon>;
 const ILock = (p) => <Icon {...p}><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></Icon>;
 const ILogOut = (p) => <Icon {...p}><path d="M9 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></Icon>;
+const IPencil = (p) => <Icon {...p}><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></Icon>;
 
 /* =========================================================
    靜態資料庫：成分
    ========================================================= */
 const NUTRIENT_DB = [
-  { id: "vitd", name: "維生素D", category: "維生素", func: "促進鈣吸收、支持骨骼與免疫系統", rda: "10–20 mcg (400–800 IU)", ul: "100 mcg (4000 IU)", unit: "mcg" },
-  { id: "vita", name: "維生素A", category: "維生素", func: "視力健康、皮膚黏膜修復、免疫功能", rda: "700–900 mcg RAE", ul: "3000 mcg RAE", unit: "mcg" },
-  { id: "vitb1", name: "維生素B1（硫胺素）", category: "維生素", func: "醣類代謝、神經傳導功能", rda: "1.1–1.2 mg", ul: "無明確上限", unit: "mg" },
-  { id: "vitb2", name: "維生素B2（核黃素）", category: "維生素", func: "能量代謝、皮膚與眼睛健康", rda: "1.1–1.3 mg", ul: "無明確上限", unit: "mg" },
-  { id: "vitb6", name: "維生素B6", category: "維生素", func: "胺基酸代謝、神經傳導物質合成", rda: "1.3–1.7 mg", ul: "100 mg", unit: "mg" },
-  { id: "vitb12", name: "維生素B12", category: "維生素", func: "紅血球生成、神經系統維護", rda: "2.4 mcg", ul: "無明確上限", unit: "mcg" },
-  { id: "folate", name: "葉酸", category: "維生素", func: "細胞分裂與DNA合成，孕期尤其重要", rda: "400 mcg", ul: "1000 mcg", unit: "mcg" },
-  { id: "bcomplex", name: "維生素B群", category: "維生素", func: "能量代謝、神經功能、紅血球生成（綜合型）", rda: "依各B維生素而異", ul: "依各B維生素而異", unit: "mg" },
-  { id: "vitc", name: "維生素C", category: "維生素", func: "抗氧化、膠原蛋白合成、增加鐵吸收", rda: "75–90 mg", ul: "2000 mg", unit: "mg" },
-  { id: "vitamin_e", name: "維生素E", category: "維生素", func: "脂溶性抗氧化劑、保護細胞膜", rda: "15 mg", ul: "1000 mg", unit: "mg" },
-  { id: "calcium", name: "鈣", category: "礦物質", func: "維持骨骼與牙齒健康、神經傳導、肌肉收縮", rda: "1000–1200 mg", ul: "2500 mg", unit: "mg" },
-  { id: "magnesium", name: "鎂", category: "礦物質", func: "肌肉放鬆、神經穩定、能量代謝、睡眠品質", rda: "310–420 mg", ul: "350 mg（補充劑上限）", unit: "mg" },
-  { id: "zinc", name: "鋅", category: "礦物質", func: "免疫功能、傷口癒合、味覺嗅覺", rda: "8–11 mg", ul: "40 mg", unit: "mg" },
-  { id: "iron", name: "鐵", category: "礦物質", func: "血紅素合成、氧氣運輸、預防貧血", rda: "8–18 mg", ul: "45 mg", unit: "mg" },
-  { id: "copper", name: "銅", category: "礦物質", func: "鐵代謝、結締組織合成、抗氧化酵素輔因子", rda: "0.9 mg", ul: "10 mg", unit: "mg" },
-  { id: "selenium", name: "硒", category: "礦物質", func: "抗氧化酵素成分、甲狀腺荷爾蒙代謝", rda: "55 mcg", ul: "400 mcg", unit: "mcg" },
-  { id: "iodine", name: "碘", category: "礦物質", func: "甲狀腺荷爾蒙合成、代謝調節", rda: "150 mcg", ul: "1100 mcg", unit: "mcg" },
-  { id: "chromium", name: "鉻", category: "礦物質", func: "協助胰島素作用、醣類與脂質代謝", rda: "25–35 mcg", ul: "無明確上限", unit: "mcg" },
-  { id: "manganese", name: "錳", category: "礦物質", func: "骨骼形成、抗氧化酵素輔因子", rda: "1.8–2.3 mg", ul: "11 mg", unit: "mg" },
-  { id: "potassium", name: "鉀", category: "礦物質", func: "體液平衡、神經與肌肉功能、血壓調節", rda: "2600–3400 mg", ul: "無明確上限（腎功能不佳者需留意）", unit: "mg" },
-  { id: "omega3", name: "Omega-3 魚油", category: "脂肪酸", func: "心血管健康、抗發炎、腦部與視力發育", rda: "250–500 mg (EPA+DHA)", ul: "一般建議 <3000 mg", unit: "mg" },
-  { id: "probiotic", name: "益生菌", category: "菌種", func: "腸道菌相平衡、消化與部分免疫調節", rda: "10–100 億 CFU", ul: "無明確上限", unit: "億CFU" },
-  { id: "coq10", name: "輔酶Q10", category: "類輔酶", func: "細胞能量產生、抗氧化，常與心血管保健併用", rda: "30–200 mg", ul: "一般建議 <1200 mg", unit: "mg" },
-  { id: "collagen", name: "膠原蛋白", category: "蛋白質", func: "皮膚彈性、關節與結締組織支持", rda: "2500–10000 mg", ul: "無明確上限", unit: "mg" },
-  { id: "whey", name: "乳清蛋白", category: "蛋白質", func: "肌肉修復與生長、日常蛋白質補充", rda: "20–30 g／次", ul: "依個人總蛋白需求而定", unit: "g" },
-  { id: "creatine", name: "肌酸", category: "運動營養", func: "增加高強度運動表現、肌肉能量供應", rda: "3–5 g", ul: "一般建議 <5 g／日長期使用", unit: "g" },
-  { id: "lutein", name: "葉黃素", category: "植化素", func: "眼睛黃斑部保健、過濾藍光", rda: "6–10 mg", ul: "一般建議 <20 mg", unit: "mg" },
-  { id: "curcumin", name: "薑黃素", category: "植化素", func: "抗發炎、抗氧化，常用於關節保健", rda: "500–1000 mg", ul: "一般建議 <2000 mg", unit: "mg" },
-  { id: "cranberry", name: "蔓越莓萃取", category: "植化素", func: "泌尿道保健，抑制細菌附著尿道壁", rda: "300–500 mg", ul: "無明確上限", unit: "mg" },
-  { id: "hyaluronic", name: "玻尿酸", category: "其他", func: "皮膚保濕、關節潤滑", rda: "120–240 mg", ul: "無明確上限", unit: "mg" },
-  { id: "melatonin", name: "褪黑激素", category: "其他", func: "調節睡眠週期，助入睡", rda: "0.5–5 mg（睡前）", ul: "一般建議 <10 mg", unit: "mg" },
-  { id: "gaba", name: "GABA", category: "其他", func: "放鬆神經、幫助情緒與睡眠品質", rda: "100–300 mg", ul: "無明確上限", unit: "mg" },
+  { id: "vitd", name: "維生素D3", category: "維生素", func: "促進鈣吸收、支持骨骼與免疫系統", rda: "10–20 mcg (400–800 IU)", ul: "100 mcg (4000 IU)", unit: "mcg" , ulValue: 100, ulUnit: "mcg" },
+  { id: "vitk", name: "維生素K", category: "維生素", func: "凝血功能、骨骼代謝", rda: "90–120 mcg", ul: "無明確上限", unit: "mcg" , ulValue: null, ulUnit: "mcg" },
+  { id: "niacin", name: "菸鹼素（B3）", category: "維生素", func: "能量代謝、皮膚與神經系統健康", rda: "14–16 mg", ul: "35 mg", unit: "mg" , ulValue: 35, ulUnit: "mg" },
+  { id: "vita", name: "維生素A", category: "維生素", func: "視力健康、皮膚黏膜修復、免疫功能", rda: "700–900 mcg RAE", ul: "3000 mcg RAE", unit: "mcg" , ulValue: 3000, ulUnit: "mcg" },
+  { id: "vitb1", name: "維生素B1（硫胺素）", category: "維生素", func: "醣類代謝、神經傳導功能", rda: "1.1–1.2 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" },
+  { id: "vitb2", name: "維生素B2（核黃素）", category: "維生素", func: "能量代謝、皮膚與眼睛健康", rda: "1.1–1.3 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" },
+  { id: "vitb6", name: "維生素B6", category: "維生素", func: "胺基酸代謝、神經傳導物質合成", rda: "1.3–1.7 mg", ul: "100 mg", unit: "mg" , ulValue: 100, ulUnit: "mg" },
+  { id: "vitb12", name: "維生素B12", category: "維生素", func: "紅血球生成、神經系統維護", rda: "2.4 mcg", ul: "無明確上限", unit: "mcg" , ulValue: null, ulUnit: "mcg" },
+  { id: "folate", name: "葉酸", category: "維生素", func: "細胞分裂與DNA合成，孕期尤其重要", rda: "400 mcg", ul: "1000 mcg", unit: "mcg" , ulValue: 1000, ulUnit: "mcg" },
+  { id: "bcomplex", name: "維生素B群", category: "維生素", func: "能量代謝、神經功能、紅血球生成（綜合型）", rda: "依各B維生素而異", ul: "依各B維生素而異", unit: "mg" , ulValue: null, ulUnit: "mg" },
+  { id: "vitc", name: "維生素C", category: "維生素", func: "抗氧化、膠原蛋白合成、增加鐵吸收", rda: "75–90 mg", ul: "2000 mg", unit: "mg" , ulValue: 2000, ulUnit: "mg" },
+  { id: "vitamin_e", name: "維生素E", category: "維生素", func: "脂溶性抗氧化劑、保護細胞膜", rda: "15 mg", ul: "1000 mg", unit: "mg" , ulValue: 1000, ulUnit: "mg" },
+  { id: "calcium", name: "鈣", category: "礦物質", func: "維持骨骼與牙齒健康、神經傳導、肌肉收縮", rda: "1000–1200 mg", ul: "2500 mg", unit: "mg" , ulValue: 2500, ulUnit: "mg" },
+  { id: "magnesium", name: "鎂", category: "礦物質", func: "肌肉放鬆、神經穩定、能量代謝、睡眠品質", rda: "310–420 mg", ul: "350 mg（補充劑上限）", unit: "mg" , ulValue: 350, ulUnit: "mg" },
+  { id: "zinc", name: "鋅", category: "礦物質", func: "免疫功能、傷口癒合、味覺嗅覺", rda: "8–11 mg", ul: "40 mg", unit: "mg" , ulValue: 40, ulUnit: "mg" },
+  { id: "iron", name: "鐵", category: "礦物質", func: "血紅素合成、氧氣運輸、預防貧血", rda: "8–18 mg", ul: "45 mg", unit: "mg" , ulValue: 45, ulUnit: "mg" },
+  { id: "copper", name: "銅", category: "礦物質", func: "鐵代謝、結締組織合成、抗氧化酵素輔因子", rda: "0.9 mg", ul: "10 mg", unit: "mg" , ulValue: 10, ulUnit: "mg" },
+  { id: "selenium", name: "硒", category: "礦物質", func: "抗氧化酵素成分、甲狀腺荷爾蒙代謝", rda: "55 mcg", ul: "400 mcg", unit: "mcg" , ulValue: 400, ulUnit: "mcg" },
+  { id: "iodine", name: "碘", category: "礦物質", func: "甲狀腺荷爾蒙合成、代謝調節", rda: "150 mcg", ul: "1100 mcg", unit: "mcg" , ulValue: 1100, ulUnit: "mcg" },
+  { id: "chromium", name: "鉻", category: "礦物質", func: "協助胰島素作用、醣類與脂質代謝", rda: "25–35 mcg", ul: "無明確上限", unit: "mcg" , ulValue: null, ulUnit: "mcg" },
+  { id: "manganese", name: "錳", category: "礦物質", func: "骨骼形成、抗氧化酵素輔因子", rda: "1.8–2.3 mg", ul: "11 mg", unit: "mg" , ulValue: 11, ulUnit: "mg" },
+  { id: "potassium", name: "鉀", category: "礦物質", func: "體液平衡、神經與肌肉功能、血壓調節", rda: "2600–3400 mg", ul: "無明確上限（腎功能不佳者需留意）", unit: "mg" , ulValue: null, ulUnit: "mg" },
+  { id: "omega3", name: "Omega-3 魚油", category: "脂肪酸", func: "心血管健康、抗發炎、腦部與視力發育", rda: "250–500 mg (EPA+DHA)", ul: "一般建議 <3000 mg", unit: "mg" , ulValue: 3000, ulUnit: "mg" },
+  { id: "epa", name: "EPA", category: "脂肪酸", func: "Omega-3 脂肪酸之一，心血管與抗發炎保健", rda: "隨產品標示（常見 300–1000 mg）", ul: "一般建議 EPA+DHA 總量 <3000 mg", unit: "mg" , ulValue: null, ulUnit: "mg" },
+  { id: "dha", name: "DHA", category: "脂肪酸", func: "Omega-3 脂肪酸之一，腦部與視力發育", rda: "隨產品標示（常見 200–600 mg）", ul: "一般建議 EPA+DHA 總量 <3000 mg", unit: "mg" , ulValue: null, ulUnit: "mg" },
+  { id: "probiotic", name: "益生菌", category: "菌種", func: "腸道菌相平衡、消化與部分免疫調節", rda: "10–100 億 CFU", ul: "無明確上限", unit: "億CFU" , ulValue: null, ulUnit: "億CFU" },
+  { id: "coq10", name: "輔酶Q10", category: "類輔酶", func: "細胞能量產生、抗氧化，常與心血管保健併用", rda: "30–200 mg", ul: "一般建議 <1200 mg", unit: "mg" , ulValue: 1200, ulUnit: "mg" },
+  { id: "collagen", name: "膠原蛋白", category: "蛋白質", func: "皮膚彈性、關節與結締組織支持", rda: "2500–10000 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" },
+  { id: "whey", name: "乳清蛋白", category: "蛋白質", func: "肌肉修復與生長、日常蛋白質補充", rda: "20–30 g／次", ul: "依個人總蛋白需求而定", unit: "g" , ulValue: null, ulUnit: "g" },
+  { id: "creatine", name: "肌酸", category: "運動營養", func: "增加高強度運動表現、肌肉能量供應", rda: "3–5 g", ul: "一般建議 <5 g／日長期使用", unit: "g" , ulValue: 5, ulUnit: "g" },
+  { id: "glucosamine", name: "葡萄糖胺", category: "關節保健", func: "軟骨基質成分，關節保健常見成分", rda: "1500 mg", ul: "一般建議 <1500 mg", unit: "mg" , ulValue: 1500, ulUnit: "mg" },
+  { id: "chondroitin", name: "軟骨素", category: "關節保健", func: "軟骨結構成分，常與葡萄糖胺併用於關節保健", rda: "800–1200 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" },
+  { id: "lactoferrin", name: "乳鐵蛋白", category: "蛋白質", func: "免疫調節、腸道與鐵代謝相關保健", rda: "100–300 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" },
+  { id: "anthocyanin", name: "花青素", category: "植化素", func: "抗氧化，常見於護眼與循環保健產品", rda: "隨產品標示（常見 50–300 mg）", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" },
+  { id: "astaxanthin", name: "蝦紅素", category: "植化素", func: "強效抗氧化，護眼與皮膚保健", rda: "4–12 mg", ul: "一般建議 <12 mg", unit: "mg" , ulValue: 12, ulUnit: "mg" },
+  { id: "lutein", name: "葉黃素", category: "植化素", func: "眼睛黃斑部保健、過濾藍光", rda: "6–10 mg", ul: "一般建議 <20 mg", unit: "mg" , ulValue: 20, ulUnit: "mg" },
+  { id: "curcumin", name: "薑黃素", category: "植化素", func: "抗發炎、抗氧化，常用於關節保健", rda: "500–1000 mg", ul: "一般建議 <2000 mg", unit: "mg" , ulValue: 2000, ulUnit: "mg" },
+  { id: "cranberry", name: "蔓越莓萃取", category: "植化素", func: "泌尿道保健，抑制細菌附著尿道壁", rda: "300–500 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" },
+  { id: "hyaluronic", name: "玻尿酸", category: "其他", func: "皮膚保濕、關節潤滑", rda: "120–240 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" },
+  { id: "melatonin", name: "褪黑激素", category: "其他", func: "調節睡眠週期，助入睡", rda: "0.5–5 mg（睡前）", ul: "一般建議 <10 mg", unit: "mg" , ulValue: 10, ulUnit: "mg" },
+  { id: "gaba", name: "GABA", category: "其他", func: "放鬆神經、幫助情緒與睡眠品質", rda: "100–300 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" },
 ];
 const nutrientByName = (name) => NUTRIENT_DB.find((n) => n.name === name);
 
+/* 將 amount 從 fromUnit 換算成 toUnit（僅支援公制重量單位互換），無法換算回傳 null */
+function convertAmount(amount, fromUnit, toUnit) {
+  if (!fromUnit || !toUnit) return null;
+  if (fromUnit === toUnit) return amount;
+  const toMg = { mg: 1, g: 1000, mcg: 0.001 };
+  if (toMg[fromUnit] !== undefined && toMg[toUnit] !== undefined) {
+    return (amount * toMg[fromUnit]) / toMg[toUnit];
+  }
+  return null;
+}
+
+/* 彙整目前「我的保健品」清單中的所有成分，回傳每個成分的總量與是否超標 */
+function summarizeIntake(mySupplements) {
+  const map = {}; // name -> { totalKnownUnit: number|null, unit, sources: [{label, amount, unit}], hasUnconvertible: bool }
+  mySupplements.forEach((s) => {
+    (s.ingredients || []).forEach((ing) => {
+      if (!ing.name || ing.amount === "" || ing.amount === undefined || ing.amount === null) return;
+      const amountNum = Number(ing.amount);
+      if (Number.isNaN(amountNum)) return;
+      if (!map[ing.name]) map[ing.name] = { total: 0, unit: null, sources: [], hasUnconvertible: false };
+      const ref = nutrientByName(ing.name);
+      const canonicalUnit = ref ? ref.ulUnit || ref.unit : ing.unit;
+      const converted = convertAmount(amountNum, ing.unit, canonicalUnit);
+      if (converted === null) {
+        map[ing.name].hasUnconvertible = true;
+      } else {
+        map[ing.name].total += converted;
+        map[ing.name].unit = canonicalUnit;
+      }
+      map[ing.name].sources.push({ label: s.name, amount: ing.amount, unit: ing.unit });
+    });
+  });
+  return Object.entries(map).map(([name, data]) => {
+    const ref = nutrientByName(name);
+    const ul = ref ? ref.ulValue : null;
+    let status = "unknown"; // ok | over | unknown
+    if (ul !== null && ul !== undefined && data.unit) status = data.total > ul ? "over" : "ok";
+    return { name, ...data, ul, ulUnit: ref ? ref.ulUnit : null, status };
+  }).sort((a, b) => (a.status === "over" ? -1 : 1) - (b.status === "over" ? -1 : 1));
+}
+
+/* Excel 匯入欄位對應：{excel成分欄位名稱: [excel單位欄位名稱, 寫入用的成分名稱]} */
+const EXCEL_INGREDIENT_COLUMNS = {
+  "維生素A": ["維生素A單位", "維生素A"],
+  "維生素B1": ["維生素B1單位", "維生素B1（硫胺素）"],
+  "維生素B2": ["維生素B2單位", "維生素B2（核黃素）"],
+  "維生素B6": ["維生素B6單位", "維生素B6"],
+  "維生素B12": ["維生素B12單位", "維生素B12"],
+  "菸鹼素(B3)": ["菸鹼素(B3)單位", "菸鹼素（B3）"],
+  "葉酸": ["葉酸單位", "葉酸"],
+  "維生素C": ["維生素C單位", "維生素C"],
+  "維生素D3": ["維生素D3單位", "維生素D3"],
+  "維生素E": ["維生素E單位", "維生素E"],
+  "維生素K": ["維生素K單位", "維生素K"],
+  "鈣": ["鈣單位", "鈣"],
+  "鎂": ["鎂單位", "鎂"],
+  "鋅": ["鋅單位", "鋅"],
+  "鐵": ["鐵單位", "鐵"],
+  "硒": ["硒單位", "硒"],
+  "碘": ["碘單位", "碘"],
+  "鉀": ["鉀單位", "鉀"],
+  "銅": ["銅單位", "銅"],
+  "錳": ["錳單位", "錳"],
+  "鉻": ["鉻單位", "鉻"],
+  "EPA": ["EPA單位", "EPA"],
+  "DHA": ["DHA單位", "DHA"],
+  "益生菌": ["益生菌單位", "益生菌"],
+  "葡萄糖胺": ["葡萄糖胺單位", "葡萄糖胺"],
+  "軟骨素": ["軟骨素單位", "軟骨素"],
+  "輔酶Q10": ["輔酶Q10單位", "輔酶Q10"],
+  "膠原蛋白": ["膠原蛋白單位", "膠原蛋白"],
+  "乳鐵蛋白": ["乳鐵蛋白單位", "乳鐵蛋白"],
+  "葉黃素": ["葉黃素單位", "葉黃素"],
+  "玻尿酸": ["玻尿酸單位", "玻尿酸"],
+  "GABA": ["GABA單位", "GABA"],
+  "褪黑激素": ["褪黑激素單位", "褪黑激素"],
+  "蔓越莓": ["蔓越莓單位", "蔓越莓萃取"],
+  "花青素": ["花青素單位", "花青素"],
+  "蝦紅素": ["蝦紅素單位", "蝦紅素"],
+};
+
+function excelRowToProduct(row) {
+  const ingredients = [];
+  Object.entries(EXCEL_INGREDIENT_COLUMNS).forEach(([col, [unitCol, targetName]]) => {
+    const amount = row[col];
+    if (amount === undefined || amount === null || amount === "" || Number.isNaN(amount)) return;
+    ingredients.push({ name: targetName, amount: String(amount), unit: row[unitCol] || "" });
+  });
+  const noteParts = [];
+  if (row["規格"]) noteParts.push(`規格：${row["規格"]}`);
+  if (row["劑型"]) noteParts.push(`劑型：${row["劑型"]}`);
+  if (row["購買通路"]) noteParts.push(`購買通路：${row["購買通路"]}`);
+  if (row["推薦者"]) noteParts.push(`推薦者：${row["推薦者"]}`);
+  if (row["備註"]) noteParts.push(row["備註"]);
+  return {
+    brand: String(row["品牌"] || "").trim(),
+    name: String(row["產品名稱"] || "未命名產品").trim(),
+    image: "",
+    link: "",
+    dailyDose: "",
+    note: noteParts.join("｜"),
+    ingredients,
+  };
+}
+
 const COMBOS_GOOD = [
-  { pair: ["維生素D", "鈣"], note: "維生素D促進鈣吸收，兩者併用效果加乘，建議隨餐服用。" },
-  { pair: ["維生素D", "鎂"], note: "鎂是維生素D代謝為活性形式的輔因子，缺鎂會降低維生素D效用。" },
+  { pair: ["維生素D3", "鈣"], note: "維生素D促進鈣吸收，兩者併用效果加乘，建議隨餐服用。" },
+  { pair: ["維生素D3", "鎂"], note: "鎂是維生素D代謝為活性形式的輔因子，缺鎂會降低維生素D效用。" },
   { pair: ["維生素C", "鐵"], note: "維生素C可將非血基質鐵還原為更易吸收的形式，建議同時服用。" },
   { pair: ["益生菌", "維生素B群"], note: "部分腸道菌可協助合成B群，腸道健康有助整體營養吸收。" },
   { pair: ["輔酶Q10", "維生素E"], note: "兩者皆為脂溶性抗氧化物，隨油脂性餐點服用吸收較佳。" },
@@ -141,6 +277,8 @@ const COMBOS_AVOID = [
   { pair: ["鋅", "鈣"], note: "高劑量鈣可能降低鋅的吸收率，長期併服建議分開時段。" },
   { pair: ["鋅", "銅"], note: "長期高劑量補鋅會抑制銅吸收，可能導致銅缺乏。" },
   { pair: ["維生素E", "Omega-3 魚油"], note: "兩者皆有輕微抗凝血作用，若同時使用抗凝血藥物需諮詢醫師。" },
+  { pair: ["維生素E", "EPA"], note: "兩者皆有輕微抗凝血作用，若同時使用抗凝血藥物需諮詢醫師。" },
+  { pair: ["維生素E", "DHA"], note: "兩者皆有輕微抗凝血作用，若同時使用抗凝血藥物需諮詢醫師。" },
   { pair: ["鈣", "鎂"], note: "兩者共用同一吸收路徑，高劑量併服會互相競爭，建議分開時段或選比例配方。" },
 ];
 
@@ -180,6 +318,8 @@ function App() {
   const [productLibrary, setProductLibrary] = useState([]);
   const [checkLog, setCheckLog] = useState({});
   const [showAddMine, setShowAddMine] = useState(false);
+  const [editingMine, setEditingMine] = useState(null); // 我的保健品：編輯中的項目（null=非編輯）
+  const [pendingLibraryProduct, setPendingLibraryProduct] = useState(null); // 從備品庫加入時，先讓使用者選時段
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [nutrientFilter, setNutrientFilter] = useState("全部");
   const [selectedDate, setSelectedDate] = useState(todayKey());
@@ -230,15 +370,31 @@ function App() {
   const toggleCheck = (dateKey, entryId) => {
     if (!user) return;
     const current = checkLog[dateKey] || {};
-    const next = { ...current, [entryId]: !current[entryId] };
+    const wasChecked = !!current[entryId];
+    const next = { ...current, [entryId]: !wasChecked };
     setCheckLog((prev) => ({ ...prev, [dateKey]: next }));
     db.collection("users").doc(user.uid).collection("checklog").doc(dateKey).set(next).catch((e) => console.error(e));
+
+    // 勾選=剩餘份數-1；取消勾選=+1（還原）
+    const supplementId = entryId.split("__")[0];
+    const supplement = mySupplements.find((s) => s.id === supplementId);
+    if (supplement && supplement.remainingServings !== undefined && supplement.remainingServings !== null && supplement.remainingServings !== "") {
+      const delta = wasChecked ? 1 : -1;
+      db.collection("users").doc(user.uid).collection("supplements").doc(supplementId)
+        .update({ remainingServings: firebase.firestore.FieldValue.increment(delta) })
+        .catch((e) => console.error(e));
+    }
   };
 
   const addSupplement = (item) => {
     if (!user) return;
     db.collection("users").doc(user.uid).collection("supplements").add({ ...item, createdAt: firebase.firestore.FieldValue.serverTimestamp() })
-      .then(() => setShowAddMine(false)).catch((e) => alert("新增失敗：" + e.message));
+      .then(() => { setShowAddMine(false); setPendingLibraryProduct(null); }).catch((e) => alert("新增失敗：" + e.message));
+  };
+  const updateSupplement = (id, item) => {
+    if (!user) return;
+    db.collection("users").doc(user.uid).collection("supplements").doc(id).update(item)
+      .then(() => setEditingMine(null)).catch((e) => alert("更新失敗：" + e.message));
   };
   const removeSupplement = (id) => {
     if (!user) return;
@@ -257,6 +413,36 @@ function App() {
   };
   const toggleCompare = (id) => setCompareIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
+  const [importing, setImporting] = useState(false);
+  const importFromExcel = (file) => {
+    if (!user || !file) return;
+    setImporting(true);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+        const products = rows.map(excelRowToProduct).filter((p) => p.name && p.name !== "未命名產品");
+        if (products.length === 0) { alert("在這個 Excel 檔案裡沒有找到可匯入的資料，請確認欄位名稱與範本一致。"); setImporting(false); return; }
+        const batch = db.batch();
+        products.forEach((p) => {
+          const ref = db.collection("productLibrary").doc();
+          batch.set(ref, { ...p, ownerUid: user.uid, ownerName: user.displayName || "匿名使用者", createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        });
+        batch.commit()
+          .then(() => alert(`匯入完成，共新增 ${products.length} 筆備品。`))
+          .catch((e) => alert("匯入失敗：" + e.message))
+          .finally(() => setImporting(false));
+      } catch (e) {
+        alert("讀取 Excel 檔案失敗：" + e.message);
+        setImporting(false);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
   const filteredNutrients = useMemo(() => (nutrientFilter === "全部" ? NUTRIENT_DB : NUTRIENT_DB.filter((n) => n.category === nutrientFilter)), [nutrientFilter]);
   const categories = ["全部", ...Array.from(new Set(NUTRIENT_DB.map((n) => n.category)))];
 
@@ -270,32 +456,33 @@ function App() {
   const totalCount = dayEntries.length;
 
   return (
-    <div style={styles.app}>
+    <div style={styles.app} className="app-shell">
       <header style={styles.header}>
-        <div style={styles.headerTopRow}>
-          <div style={styles.headerTop}><IPill size={22} color={C.amber} strokeWidth={2.2} /><span style={styles.brandMark}>保健台帳</span></div>
-          <AuthWidget user={user} authLoading={authLoading} fbReady={fbReady} onSignIn={signIn} onSignOut={signOut} />
+        <div className="app-inner">
+          <div style={{ ...styles.headerTopRow, justifyContent: "flex-end" }}>
+            <AuthWidget user={user} authLoading={authLoading} fbReady={fbReady} onSignIn={signIn} onSignOut={signOut} />
+          </div>
+          <h1 style={styles.title}>來吃保健品</h1>
+          <p style={styles.subtitle}>保健品控管、備品一把罩</p>
+          {!fbReady && <p style={styles.fbWarning}>{fbError}（目前以離線示範模式運作，登入與雲端同步功能無法使用）</p>}
         </div>
-        <h1 style={styles.title}>保健品管理系統</h1>
-        <p style={styles.subtitle}>每日服用 · 我的保健品 · 建議用量 · 備品選擇</p>
-        {!fbReady && <p style={styles.fbWarning}>{fbError}（目前以離線示範模式運作，登入與雲端同步功能無法使用）</p>}
       </header>
 
       <nav style={styles.tabbar}>
-        <TabButton Icon={ICalendar} label="每日服用" active={tab === "checklist"} onClick={() => setTab("checklist")} locked={!user} />
-        <TabButton Icon={IPill} label="我的保健品" active={tab === "mine"} onClick={() => setTab("mine")} locked={!user} />
-        <TabButton Icon={IBook} label="建議用量" active={tab === "reference"} onClick={() => setTab("reference")} />
-        <TabButton Icon={IPackage} label="備品選擇" active={tab === "library"} onClick={() => setTab("library")} />
+        <TabButton Icon={ICalendar} label="每日服用" active={tab === "checklist"} onClick={() => setTab("checklist")} locked={!user} accent={C.amber} />
+        <TabButton Icon={IPill} label="我的保健品" active={tab === "mine"} onClick={() => setTab("mine")} locked={!user} accent={C.amber} />
+        <TabButton Icon={IBook} label="建議用量" active={tab === "reference"} onClick={() => setTab("reference")} accent={C.amber} />
+        <TabButton Icon={IPackage} label="備品選擇" active={tab === "library"} onClick={() => setTab("library")} accent={C.amber} />
       </nav>
 
-      <main style={styles.main}>
+      <main style={styles.main} className="app-main">
         {tab === "checklist" && (
           user ? (
             <ChecklistView selectedDate={selectedDate} setSelectedDate={setSelectedDate} dayEntries={dayEntries} dayLog={dayLog} toggleCheck={toggleCheck} takenCount={takenCount} totalCount={totalCount} />
           ) : <LoginGate reason="登入 Google 帳號後，即可查看並勾選你的每日服用排程。" />
         )}
         {tab === "mine" && (
-          user ? <MineView mySupplements={mySupplements} onAdd={() => setShowAddMine(true)} onRemove={removeSupplement} />
+          user ? <MineView mySupplements={mySupplements} onAdd={() => setShowAddMine(true)} onRemove={removeSupplement} onEdit={(s) => setEditingMine(s)} />
                : <LoginGate reason="登入 Google 帳號後，即可管理你自己的保健品清單。" />
         )}
         {tab === "reference" && <ReferenceView categories={categories} filter={nutrientFilter} setFilter={setNutrientFilter} list={filteredNutrients} />}
@@ -305,20 +492,48 @@ function App() {
             onToggleCompare={toggleCompare}
             onAddProduct={() => (user ? setShowAddProduct(true) : signIn())}
             onRemoveProduct={removeProduct}
+            onImportExcel={importFromExcel}
+            importing={importing}
             onAddToMine={(product) => {
               if (!user) { signIn(); return; }
-              addSupplement({
-                name: `${product.brand ? product.brand + "｜" : ""}${product.name}`,
-                dose: product.dailyDose || "—", times: [], note: product.note || "",
-                ingredients: product.ingredients || [], image: product.image || "", link: product.link || "", sourceProductId: product.id,
-              });
-              setTab("mine");
+              setPendingLibraryProduct(product);
             }}
           />
         )}
       </main>
 
-      {showAddMine && <AddToMineModal onClose={() => setShowAddMine(false)} onAdd={addSupplement} productLibrary={productLibrary} />}
+      {showAddMine && <AddToMineModal onClose={() => setShowAddMine(false)} onSave={addSupplement} productLibrary={productLibrary} />}
+      {editingMine && (
+        <AddToMineModal
+          onClose={() => setEditingMine(null)}
+          onSave={(item) => updateSupplement(editingMine.id, item)}
+          productLibrary={productLibrary}
+          initial={editingMine}
+          title="編輯我的保健品"
+          submitLabel="儲存變更"
+          isEdit
+        />
+      )}
+      {pendingLibraryProduct && (
+        <AddToMineModal
+          onClose={() => setPendingLibraryProduct(null)}
+          onSave={(item) => { addSupplement(item); setTab("mine"); }}
+          productLibrary={productLibrary}
+          initial={{
+            name: `${pendingLibraryProduct.brand ? pendingLibraryProduct.brand + "｜" : ""}${pendingLibraryProduct.name}`,
+            dose: pendingLibraryProduct.dailyDose || "—",
+            note: pendingLibraryProduct.note || "",
+            ingredients: pendingLibraryProduct.ingredients || [],
+            image: pendingLibraryProduct.image || "",
+            link: pendingLibraryProduct.link || "",
+            sourceProductId: pendingLibraryProduct.id,
+            times: [],
+          }}
+          title="設定服用時段"
+          submitLabel="加入我的保健品"
+          lockDetails
+        />
+      )}
       {showAddProduct && <AddProductModal onClose={() => setShowAddProduct(false)} onAdd={addProduct} />}
     </div>
   );
@@ -338,14 +553,15 @@ function AuthWidget({ user, authLoading, fbReady, onSignIn, onSignOut }) {
   return <button onClick={onSignIn} style={styles.authBtnSolid}>使用 Google 登入</button>;
 }
 
-function TabButton({ Icon, label, active, onClick, locked }) {
+function TabButton({ Icon, label, active, onClick, locked, accent }) {
+  const color = accent || C.amber;
   return (
     <button onClick={onClick} style={{ ...styles.tabBtn, ...(active ? styles.tabBtnActive : {}) }}>
-      <Icon size={16} strokeWidth={2.2} color={active ? C.ink : C.muted} />
+      <Icon size={16} strokeWidth={2.2} color={active ? color : C.muted} />
       <span style={{ display: "flex", alignItems: "center", gap: 3, color: active ? C.ink : C.muted, fontWeight: active ? 700 : 500 }}>
         {label}{locked && <ILock size={10} color={C.muted} />}
       </span>
-      {active && <div style={styles.tabUnderline} />}
+      {active && <div style={{ ...styles.tabUnderline, background: color }} />}
     </button>
   );
 }
@@ -366,10 +582,12 @@ function ChecklistView({ selectedDate, setSelectedDate, dayEntries, dayLog, togg
         </div>
       </div>
       {dayEntries.length === 0 && <EmptyState text="尚未安排任何保健品排程。到「我的保健品」加入項目並設定服用時段，就會在這裡出現每日勾選清單。" />}
-      {grouped.map(({ slot, entries }) => (
+      {grouped.map(({ slot, entries }) => {
+        const slotColor = TIME_SLOT_COLORS[slot.id] || C.amber;
+        return (
         <section key={slot.id} style={styles.slotSection}>
           <div style={styles.slotHeader}>
-            <slot.Icon size={16} color={C.amber} />
+            <slot.Icon size={16} color={slotColor} />
             <span style={styles.slotTitle}>{slot.label}</span>
             <span style={styles.slotCount}>{entries.filter((e) => dayLog[e.entryId]).length}/{entries.length}</span>
           </div>
@@ -377,8 +595,8 @@ function ChecklistView({ selectedDate, setSelectedDate, dayEntries, dayLog, togg
             {entries.map((e) => {
               const checked = !!dayLog[e.entryId];
               return (
-                <button key={e.entryId} onClick={() => toggleCheck(selectedDate, e.entryId)} style={{ ...styles.pillBlister, ...(checked ? styles.pillBlisterChecked : {}) }}>
-                  <div style={{ ...styles.pillDot, ...(checked ? styles.pillDotChecked : {}) }}>{checked && <ICheck size={13} color="#fff" strokeWidth={3} />}</div>
+                <button key={e.entryId} onClick={() => toggleCheck(selectedDate, e.entryId)} style={{ ...styles.pillBlister, ...(checked ? { ...styles.pillBlisterChecked, borderColor: slotColor, background: slotColor + "1A" } : {}) }}>
+                  <div style={{ ...styles.pillDot, ...(checked ? { ...styles.pillDotChecked, background: slotColor, borderColor: slotColor } : {}) }}>{checked && <ICheck size={13} color="#fff" strokeWidth={3} />}</div>
                   <div style={styles.pillInfo}>
                     <span style={{ ...styles.pillName, ...(checked ? styles.pillNameChecked : {}) }}>{e.supplement.name}</span>
                     <span style={styles.pillDose}>{e.supplement.dose}</span>
@@ -388,39 +606,94 @@ function ChecklistView({ selectedDate, setSelectedDate, dayEntries, dayLog, togg
             })}
           </div>
         </section>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
-function MineView({ mySupplements, onAdd, onRemove }) {
+function IntakeTable({ intake, title, helper }) {
+  if (!intake || intake.length === 0) return null;
+  return (
+    <div style={styles.intakePanel}>
+      <div style={styles.comboSectionHead}><IListChecks size={16} color={C.ink} /><span style={{ fontWeight: 700 }}>{title}</span></div>
+      {helper && <p style={styles.helperText}>{helper}</p>}
+      <div style={styles.intakeGrid}>
+        {intake.map((item) => (
+          <div key={item.name} style={{ ...styles.intakeRow, ...(item.status === "over" ? styles.intakeRowOver : {}) }}>
+            <div style={styles.intakeRowTop}>
+              <span style={styles.intakeName}>{item.name}</span>
+              {item.status === "over" && <span style={styles.overBadge}>超標</span>}
+              {item.status === "ok" && <span style={styles.okBadge}>正常</span>}
+              {item.status === "unknown" && <span style={styles.unknownBadge}>無法比對</span>}
+            </div>
+            <div style={styles.intakeAmount}>
+              {item.unit ? `合計約 ${Math.round(item.total * 100) / 100} ${item.unit}` : "單位無法加總"}
+              {item.ul !== null && item.ul !== undefined && item.unit ? ` ／ 上限 ${item.ul} ${item.ulUnit}` : ""}
+            </div>
+            {item.hasUnconvertible && <div style={styles.intakeCaveat}>部分來源單位無法自動換算加總，請自行確認實際總量</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MineView({ mySupplements, onAdd, onRemove, onEdit }) {
+  const intake = React.useMemo(() => summarizeIntake(mySupplements), [mySupplements]);
   return (
     <div>
       <div style={styles.sectionHeadRow}>
         <h2 style={styles.sectionHead}>我的保健品清單</h2>
         <button onClick={onAdd} style={styles.addBtn}><IPlus size={16} strokeWidth={2.5} /> 新增</button>
       </div>
+
+      {mySupplements.length > 0 && intake.length > 0 && (
+        <IntakeTable intake={intake} title="目前攝取元素總表" helper="依「我的保健品」清單中登記的成分加總，估算目前每日總攝取量，並比對建議上限。" />
+      )}
+
       {mySupplements.length === 0 && <EmptyState text="還沒有加入任何保健品。點右上角「新增」，可從備品庫或成分資料庫帶入，或手動輸入。" />}
       <div style={styles.cardList}>
-        {mySupplements.map((s) => (
+        {mySupplements.map((s) => {
+          const hasServings = s.remainingServings !== undefined && s.remainingServings !== null && s.remainingServings !== "";
+          const low = hasServings && Number(s.remainingServings) <= 5;
+          const empty = hasServings && Number(s.remainingServings) <= 0;
+          return (
           <div key={s.id} style={styles.supplementCard}>
             <div style={styles.supplementCardTop}>
               <div style={{ display: "flex", gap: 10 }}>
                 <ProductThumb src={s.image} size={40} />
-                <div><div style={styles.supplementName}>{s.name}</div><div style={styles.supplementDose}>{s.dose}</div></div>
+                <div>
+                  <div style={styles.supplementName}>{s.name}</div>
+                  <div style={styles.supplementDose}>{s.dose}</div>
+                  {s.startDate && <div style={styles.supplementMeta}>開始服用：{s.startDate}</div>}
+                </div>
               </div>
-              <button onClick={() => onRemove(s.id)} style={styles.iconBtnGhost}><ITrash size={16} color={C.muted} /></button>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                <div style={{ display: "flex", gap: 2 }}>
+                  <button onClick={() => onEdit(s)} style={styles.iconBtnGhost} title="編輯"><IPencil size={16} color={C.muted} /></button>
+                  <button onClick={() => onRemove(s.id)} style={styles.iconBtnGhost} title="刪除"><ITrash size={16} color={C.muted} /></button>
+                </div>
+                {hasServings && (
+                  <span style={{ ...styles.servingsBadge, ...(empty ? styles.servingsBadgeEmpty : low ? styles.servingsBadgeLow : {}) }}>
+                    {empty ? "已用完" : `剩餘 ${s.remainingServings} 份`}
+                  </span>
+                )}
+              </div>
             </div>
             {s.ingredients && s.ingredients.length > 0 && (
               <div style={styles.chipRow}>{s.ingredients.map((ing, i) => <span key={i} style={styles.ingredientChip}>{ing.name}{ing.amount ? ` · ${ing.amount}${ing.unit || ""}` : ""}</span>)}</div>
             )}
             <div style={styles.chipRow}>
               {(s.times || []).map((t) => { const slot = TIME_SLOTS.find((x) => x.id === t); return <span key={t} style={styles.timeChip}>{slot ? slot.label : t}</span>; })}
-              {(!s.times || s.times.length === 0) && <span style={styles.timeChipMuted}>尚未排定服用時段</span>}
+              {(!s.times || s.times.length === 0) && (
+                <button onClick={() => onEdit(s)} style={styles.timeChipMutedBtn}>尚未排定服用時段，點此設定</button>
+              )}
             </div>
             {s.note && <div style={styles.supplementNote}>{s.note}</div>}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -431,12 +704,18 @@ function ReferenceView({ categories, filter, setFilter, list }) {
     <div>
       <h2 style={styles.sectionHead}>成分與每日建議量</h2>
       <div style={styles.filterRow}>
-        {categories.map((c) => (<button key={c} onClick={() => setFilter(c)} style={{ ...styles.filterChip, ...(filter === c ? styles.filterChipActive : {}) }}>{c}</button>))}
+        {categories.map((c) => {
+          const active = filter === c;
+          const cColor = c === "全部" ? C.ink : categoryColor(c);
+          return (
+            <button key={c} onClick={() => setFilter(c)} style={{ ...styles.filterChip, ...(active ? { background: cColor, color: "#fff", borderColor: cColor } : { color: cColor, borderColor: cColor + "55" }) }}>{c}</button>
+          );
+        })}
       </div>
       <div style={styles.cardList}>
         {list.map((n) => (
-          <div key={n.id} style={styles.nutrientCard}>
-            <div style={styles.nutrientCardTop}><span style={styles.nutrientName}>{n.name}</span><span style={styles.nutrientCategory}>{n.category}</span></div>
+          <div key={n.id} style={{ ...styles.nutrientCard, borderLeft: `4px solid ${categoryColor(n.category)}` }}>
+            <div style={styles.nutrientCardTop}><span style={styles.nutrientName}>{n.name}</span><span style={{ ...styles.nutrientCategory, color: categoryColor(n.category) }}>{n.category}</span></div>
             <p style={styles.nutrientFunc}>{n.func}</p>
             <div style={styles.rdaRow}>
               <div style={styles.rdaBox}><span style={styles.rdaLabel}>每日建議量</span><span style={styles.rdaValue}>{n.rda}</span></div>
@@ -458,15 +737,28 @@ function ReferenceView({ categories, filter, setFilter, list }) {
   );
 }
 
-function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggleCompare, onAddProduct, onRemoveProduct, onAddToMine }) {
+function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggleCompare, onAddProduct, onRemoveProduct, onAddToMine, onImportExcel, importing }) {
   const compareProducts = productLibrary.filter((p) => compareIds.includes(p.id));
+  const trialIntake = React.useMemo(() => summarizeIntake(compareProducts), [compareProducts]);
+  const fileInputRef = React.useRef(null);
   return (
     <div>
       <div style={styles.sectionHeadRow}>
         <h2 style={styles.sectionHead}>備品清單</h2>
-        <button onClick={onAddProduct} style={styles.addBtn}>{user ? <IPlus size={16} strokeWidth={2.5} /> : <ILock size={14} />} 登錄備品</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          {user && (
+            <React.Fragment>
+              <input ref={fileInputRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }}
+                onChange={(e) => { if (e.target.files[0]) onImportExcel(e.target.files[0]); e.target.value = ""; }} />
+              <button onClick={() => fileInputRef.current && fileInputRef.current.click()} style={styles.addBtnGhost} disabled={importing}>
+                {importing ? "匯入中…" : "從 Excel 匯入"}
+              </button>
+            </React.Fragment>
+          )}
+          <button onClick={onAddProduct} style={styles.addBtn}>{user ? <IPlus size={16} strokeWidth={2.5} /> : <ILock size={14} />} 登錄備品</button>
+        </div>
       </div>
-      <p style={styles.helperText}>這是公用備品資料庫，所有人都能瀏覽；登入後才能新增或刪除自己登錄的項目。缺貨時可快速比較各品牌備品，勾選「加入比對」可與現有保健品進行成分用量比對。</p>
+      <p style={styles.helperText}>這是公用備品資料庫，所有人都能瀏覽；登入後才能新增或刪除自己登錄的項目。缺貨時可快速比較各品牌備品，勾選「試算」可列出勾選品項的總元素表並標示是否超過每日用量，也會一併比對現有保健品。</p>
       {productLibrary.length === 0 && <EmptyState text="還沒有任何人登錄備品。登入後點「登錄備品」記錄品牌、名稱、成分、購買連結與每日用量，缺貨時大家都能快速挑選替代品。" />}
       <div style={styles.cardList}>
         {productLibrary.map((p) => {
@@ -489,7 +781,7 @@ function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggle
               )}
               {p.note && <div style={styles.supplementNote}>{p.note}</div>}
               <div style={styles.productActionsRow}>
-                <label style={styles.compareCheckLabel}><input type="checkbox" checked={inCompare} onChange={() => onToggleCompare(p.id)} style={styles.checkboxNative} /> 加入比對</label>
+                <label style={styles.compareCheckLabel}><input type="checkbox" checked={inCompare} onChange={() => onToggleCompare(p.id)} style={styles.checkboxNative} /> 勾選試算</label>
                 <div style={{ display: "flex", gap: 8 }}>
                   {p.link && (<a href={p.link} target="_blank" rel="noopener noreferrer" style={styles.linkBtn}><IExternal size={13} /> 購買連結</a>)}
                   <button onClick={() => onAddToMine(p)} style={styles.smallSolidBtn}>{user ? "加入我的保健品" : "登入後加入"}</button>
@@ -499,6 +791,9 @@ function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggle
           );
         })}
       </div>
+      {compareProducts.length > 0 && (
+        <IntakeTable intake={trialIntake} title="勾選品項元素試算" helper="僅加總目前勾選的備品成分（不含現有保健品），估算若都服用會攝取多少，並標示是否超過建議上限。" />
+      )}
       {compareProducts.length > 0 && <ComparePanel compareProducts={compareProducts} mySupplements={mySupplements} />}
     </div>
   );
@@ -588,14 +883,17 @@ function IngredientEditor({ ingredients, onChange }) {
   );
 }
 
-function AddToMineModal({ onClose, onAdd, productLibrary }) {
-  const [name, setName] = useState("");
-  const [dose, setDose] = useState("");
-  const [times, setTimes] = useState([]);
-  const [note, setNote] = useState("");
-  const [ingredients, setIngredients] = useState([{ name: "", amount: "", unit: "mg" }]);
-  const [image, setImage] = useState("");
+function AddToMineModal({ onClose, onSave, productLibrary, initial, title, submitLabel, lockDetails, isEdit }) {
+  const [name, setName] = useState(initial ? initial.name || "" : "");
+  const [dose, setDose] = useState(initial ? initial.dose || "" : "");
+  const [times, setTimes] = useState(initial ? initial.times || [] : []);
+  const [note, setNote] = useState(initial ? initial.note || "" : "");
+  const [ingredients, setIngredients] = useState(initial && initial.ingredients && initial.ingredients.length ? initial.ingredients : [{ name: "", amount: "", unit: "mg" }]);
+  const [image, setImage] = useState(initial ? initial.image || "" : "");
   const [pick, setPick] = useState("");
+  const [startDate, setStartDate] = useState(initial && initial.startDate ? initial.startDate : (isEdit ? "" : todayKey()));
+  const [totalServings, setTotalServings] = useState(initial && initial.totalServings !== undefined && initial.totalServings !== null ? String(initial.totalServings) : "");
+  const [remainingServings, setRemainingServings] = useState(initial && initial.remainingServings !== undefined && initial.remainingServings !== null ? String(initial.remainingServings) : "");
 
   const toggleTime = (id) => setTimes((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
 
@@ -614,32 +912,69 @@ function AddToMineModal({ onClose, onAdd, productLibrary }) {
 
   const handleSubmit = () => {
     if (!name.trim() || times.length === 0) return;
-    onAdd({ name: name.trim(), dose: dose.trim() || "—", times, note: note.trim(), ingredients: ingredients.filter((i) => i.name.trim()), image });
+    const payload = { name: name.trim(), dose: dose.trim() || "—", times, note: note.trim(), ingredients: ingredients.filter((i) => i.name.trim()), image };
+    if (initial && initial.link !== undefined) payload.link = initial.link;
+    if (initial && initial.sourceProductId !== undefined) payload.sourceProductId = initial.sourceProductId;
+    payload.startDate = startDate || null;
+    payload.totalServings = totalServings.trim() === "" ? null : Number(totalServings);
+    if (isEdit) {
+      // 編輯模式：剩餘份數由使用者直接指定
+      payload.remainingServings = remainingServings.trim() === "" ? null : Number(remainingServings);
+    } else {
+      // 新增模式：剩餘份數 = 總份數（起始值）
+      payload.remainingServings = totalServings.trim() === "" ? null : Number(totalServings);
+    }
+    onSave(payload);
   };
 
   return (
-    <div style={styles.modalOverlay} onClick={onClose}>
-      <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
-        <div style={styles.modalHeader}><span style={styles.modalTitle}>新增到我的保健品</span><button onClick={onClose} style={styles.iconBtnGhost}><IX size={18} color={C.muted} /></button></div>
-        <label style={styles.label}>從備品庫或成分資料庫帶入（選填）</label>
-        <select value={pick} onChange={(e) => handlePick(e.target.value)} style={styles.input}>
-          <option value="">— 手動輸入 —</option>
-          {productLibrary.length > 0 && (<optgroup label="備品庫">{productLibrary.map((p) => <option key={p.id} value={`lib:${p.id}`}>{p.brand ? `${p.brand}｜` : ""}{p.name}</option>)}</optgroup>)}
-          <optgroup label="成分資料庫">{NUTRIENT_DB.map((n) => <option key={n.id} value={`db:${n.id}`}>{n.name}</option>)}</optgroup>
-        </select>
+    <div style={styles.modalOverlay} className="app-modal-overlay" onClick={onClose}>
+      <div style={styles.modalCard} className="app-modal-card" onClick={(e) => e.stopPropagation()}>
+        <div style={styles.modalHeader}><span style={styles.modalTitle}>{title || "新增到我的保健品"}</span><button onClick={onClose} style={styles.iconBtnGhost}><IX size={18} color={C.muted} /></button></div>
+        {lockDetails ? (
+          <p style={styles.helperText}>已從備品庫帶入「{name}」的資料，選好服用時段就可以加入清單；品名／劑量／成分之後也能在「我的保健品」點編輯修改。</p>
+        ) : (
+          <React.Fragment>
+            <label style={styles.label}>從備品庫或成分資料庫帶入（選填）</label>
+            <select value={pick} onChange={(e) => handlePick(e.target.value)} style={styles.input}>
+              <option value="">— 手動輸入 —</option>
+              {productLibrary.length > 0 && (<optgroup label="備品庫">{productLibrary.map((p) => <option key={p.id} value={`lib:${p.id}`}>{p.brand ? `${p.brand}｜` : ""}{p.name}</option>)}</optgroup>)}
+              <optgroup label="成分資料庫">{NUTRIENT_DB.map((n) => <option key={n.id} value={`db:${n.id}`}>{n.name}</option>)}</optgroup>
+            </select>
+          </React.Fragment>
+        )}
         <label style={styles.label}>品名</label>
         <input style={styles.input} value={name} onChange={(e) => setName(e.target.value)} placeholder="例如：維生素D3 2000IU" />
         <label style={styles.label}>劑量 / 用法</label>
         <input style={styles.input} value={dose} onChange={(e) => setDose(e.target.value)} placeholder="例如：1顆" />
         <label style={styles.label}>成分（選填）</label>
         <IngredientEditor ingredients={ingredients} onChange={setIngredients} />
+
+        <label style={styles.label}>開始服用日期（選填）</label>
+        <input type="date" style={styles.input} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+
+        <div style={styles.twoColRow}>
+          <div style={{ flex: 1 }}>
+            <label style={styles.label}>總份數（選填）</label>
+            <input type="number" inputMode="numeric" style={styles.input} value={totalServings} onChange={(e) => setTotalServings(e.target.value)} placeholder="例如：90" />
+          </div>
+          {isEdit && (
+            <div style={{ flex: 1 }}>
+              <label style={styles.label}>剩餘份數</label>
+              <input type="number" inputMode="numeric" style={styles.input} value={remainingServings} onChange={(e) => setRemainingServings(e.target.value)} placeholder="例如：72" />
+            </div>
+          )}
+        </div>
+        {!isEdit && <p style={styles.fieldHint}>填入總份數後，會自動當作目前的剩餘份數；之後在「每日服用」勾選一次會自動扣 1 份，取消勾選會加回來。</p>}
+        {isEdit && <p style={styles.fieldHint}>剩餘份數可以隨時手動修改（例如補貨、盤點誤差），每次在「每日服用」勾選會自動扣 1，取消勾選會加回 1。</p>}
+
         <label style={styles.label}>服用時段</label>
         <div style={styles.chipRow}>
           {TIME_SLOTS.map((t) => (<button key={t.id} type="button" onClick={() => toggleTime(t.id)} style={{ ...styles.timeChipSelectable, ...(times.includes(t.id) ? styles.timeChipSelected : {}) }}>{t.label}</button>))}
         </div>
         <label style={styles.label}>備註（選填）</label>
         <input style={styles.input} value={note} onChange={(e) => setNote(e.target.value)} placeholder="例如：隨餐服用" />
-        <button onClick={handleSubmit} style={styles.submitBtn} disabled={!name.trim() || times.length === 0}>加入清單</button>
+        <button onClick={handleSubmit} style={styles.submitBtn} disabled={!name.trim() || times.length === 0}>{submitLabel || "加入清單"}</button>
       </div>
     </div>
   );
@@ -664,8 +999,8 @@ function AddProductModal({ onClose, onAdd }) {
   };
 
   return (
-    <div style={styles.modalOverlay} onClick={onClose}>
-      <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+    <div style={styles.modalOverlay} className="app-modal-overlay" onClick={onClose}>
+      <div style={styles.modalCard} className="app-modal-card" onClick={(e) => e.stopPropagation()}>
         <div style={styles.modalHeader}><span style={styles.modalTitle}>登錄備品（公開）</span><button onClick={onClose} style={styles.iconBtnGhost}><IX size={18} color={C.muted} /></button></div>
         <p style={styles.helperText}>登錄後所有使用者都看得到這筆備品，只有你自己能刪除。</p>
         <label style={styles.label}>品牌</label>
@@ -691,117 +1026,138 @@ function AddProductModal({ onClose, onAdd }) {
 /* =========================================================
    設計系統
    ========================================================= */
-const C = { paper: "#F5F3EC", ink: "#20342C", pine: "#3D6152", amber: "#C08A34", rust: "#B25A3C", muted: "#8A8578", line: "#D9D3C3", card: "#FFFFFF", goodBg: "#EEF3EC", avoidBg: "#FBEFE9" };
+const C = { paper: "#FDF4F0", ink: "#3A2B2E", pine: "#00B4A6", amber: "#F17C67", rust: "#FF5D73", muted: "#9C8884", line: "#F1DED8", card: "#FFFFFF", goodBg: "#E1F8F0", avoidBg: "#FFE7E1" };
+const TIME_SLOT_COLORS = { morning: C.amber, noon: C.amber, evening: C.amber, bedtime: C.amber };
+const categoryColor = () => C.amber;
 
 const styles = {
   app: { fontFamily: "'Noto Sans TC', sans-serif", background: C.paper, minHeight: "100vh", color: C.ink, paddingBottom: 40 },
-  header: { padding: "20px 20px 16px", borderBottom: `1px solid ${C.line}` },
+  header: { padding: "20px 20px 16px", borderBottom: `1px solid ${C.line}`, background: "linear-gradient(135deg, #FBE0D8 0%, #FDF4F0 60%)" },
   headerTopRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
   headerTop: { display: "flex", alignItems: "center", gap: 6 },
-  brandMark: { fontFamily: "'JetBrains Mono', monospace", fontSize: 12, letterSpacing: "0.12em", color: C.amber, fontWeight: 600 },
-  title: { fontFamily: "'Noto Serif TC', serif", fontWeight: 900, fontSize: 26, margin: 0, letterSpacing: "0.02em" },
-  subtitle: { margin: "6px 0 0", fontSize: 13, color: C.muted },
-  fbWarning: { margin: "10px 0 0", fontSize: 11.5, color: C.rust, background: C.avoidBg, padding: "8px 10px", borderRadius: 8, lineHeight: 1.5 },
+  brandMark: { fontFamily: "'JetBrains Mono', monospace", fontSize: 14, letterSpacing: "0.12em", color: C.amber, fontWeight: 600 },
+  title: { fontFamily: "'Noto Serif TC', serif", fontWeight: 900, fontSize: 30.5, margin: 0, letterSpacing: "0.02em" },
+  subtitle: { margin: "6px 0 0", fontSize: 15.5, color: C.muted },
+  fbWarning: { margin: "10px 0 0", fontSize: 13.5, color: C.rust, background: C.avoidBg, padding: "8px 10px", borderRadius: 8, lineHeight: 1.5 },
   authBox: { display: "flex", alignItems: "center", gap: 8 },
-  authName: { fontSize: 12, color: C.ink, fontWeight: 600, maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  authBtnGhost: { display: "flex", alignItems: "center", gap: 4, background: "transparent", border: `1px solid ${C.line}`, borderRadius: 10, padding: "5px 9px", fontSize: 11.5, color: C.muted, cursor: "pointer", fontWeight: 600 },
-  authBtnSolid: { background: C.ink, color: "#fff", border: "none", borderRadius: 10, padding: "7px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" },
-  authLoading: { fontSize: 12, color: C.muted },
+  authName: { fontSize: 14, color: C.ink, fontWeight: 600, maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  authBtnGhost: { display: "flex", alignItems: "center", gap: 4, background: "transparent", border: `1px solid ${C.line}`, borderRadius: 10, padding: "5px 9px", fontSize: 13.5, color: C.muted, cursor: "pointer", fontWeight: 600 },
+  authBtnSolid: { background: C.ink, color: "#fff", border: "none", borderRadius: 10, padding: "7px 12px", fontSize: 14, fontWeight: 700, cursor: "pointer" },
+  authLoading: { fontSize: 14, color: C.muted },
   tabbar: { display: "flex", borderBottom: `1px solid ${C.line}`, background: C.paper, position: "sticky", top: 0, zIndex: 10 },
-  tabBtn: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "12px 2px 10px", background: "transparent", border: "none", fontSize: 10.5, cursor: "pointer", position: "relative" },
+  tabBtn: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "12px 2px 10px", background: "transparent", border: "none", fontSize: 12.5, cursor: "pointer", position: "relative" },
   tabBtnActive: {},
   tabUnderline: { position: "absolute", bottom: -1, left: "20%", right: "20%", height: 2, background: C.amber, borderRadius: 2 },
-  main: { padding: "18px 16px 8px", maxWidth: 720, margin: "0 auto" },
+  main: { padding: "18px 16px 8px" },
   gateBox: { display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 10, padding: "48px 20px", background: C.card, border: `1px dashed ${C.line}`, borderRadius: 14 },
-  gateText: { fontSize: 13, color: C.muted, lineHeight: 1.6, margin: 0, maxWidth: 320 },
-  sectionHead: { fontFamily: "'Noto Serif TC', serif", fontSize: 18, fontWeight: 700, margin: "0 0 14px" },
+  gateText: { fontSize: 15.5, color: C.muted, lineHeight: 1.6, margin: 0, maxWidth: 320 },
+  sectionHead: { fontFamily: "'Noto Serif TC', serif", fontSize: 21, fontWeight: 700, margin: "0 0 14px" },
   sectionHeadRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-  helperText: { fontSize: 12.5, color: C.muted, lineHeight: 1.6, margin: "0 0 16px" },
-  addBtn: { display: "flex", alignItems: "center", gap: 5, background: C.ink, color: "#fff", border: "none", borderRadius: 20, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" },
+  helperText: { fontSize: 15, color: C.muted, lineHeight: 1.6, margin: "0 0 16px" },
+  addBtn: { display: "flex", alignItems: "center", gap: 5, background: C.ink, color: "#fff", border: "none", borderRadius: 20, padding: "8px 14px", fontSize: 15.5, fontWeight: 600, cursor: "pointer" },
+  addBtnGhost: { display: "flex", alignItems: "center", gap: 5, background: "transparent", color: C.pine, border: `1px solid ${C.pine}`, borderRadius: 20, padding: "8px 14px", fontSize: 15.5, fontWeight: 600, cursor: "pointer" },
   dateRow: { marginBottom: 18 },
-  dateInput: { fontFamily: "'JetBrains Mono', monospace", fontSize: 13, padding: "8px 10px", borderRadius: 8, border: `1px solid ${C.line}`, background: C.card, color: C.ink, marginBottom: 12 },
+  dateInput: { fontFamily: "'JetBrains Mono', monospace", fontSize: 15.5, padding: "8px 10px", borderRadius: 8, border: `1px solid ${C.line}`, background: C.card, color: C.ink, marginBottom: 12 },
   progressWrap: { display: "flex", alignItems: "center", gap: 10 },
   progressTrack: { flex: 1, height: 8, background: C.line, borderRadius: 4, overflow: "hidden" },
   progressFill: { height: "100%", background: C.pine, borderRadius: 4, transition: "width 0.3s ease" },
-  progressLabel: { fontSize: 12, color: C.muted, fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap" },
+  progressLabel: { fontSize: 14, color: C.muted, fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap" },
   slotSection: { marginBottom: 20 },
   slotHeader: { display: "flex", alignItems: "center", gap: 6, marginBottom: 8 },
-  slotTitle: { fontSize: 13, fontWeight: 700, color: C.ink },
-  slotCount: { fontSize: 11, color: C.muted, fontFamily: "'JetBrains Mono', monospace", marginLeft: "auto" },
+  slotTitle: { fontSize: 15.5, fontWeight: 700, color: C.ink },
+  slotCount: { fontSize: 13, color: C.muted, fontFamily: "'JetBrains Mono', monospace", marginLeft: "auto" },
   pillRow: { display: "flex", flexDirection: "column", gap: 8 },
   pillBlister: { display: "flex", alignItems: "center", gap: 12, background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "12px 14px", cursor: "pointer", textAlign: "left", width: "100%" },
   pillBlisterChecked: { background: C.goodBg, borderColor: C.pine },
   pillDot: { width: 26, height: 26, borderRadius: "50%", border: `2px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
   pillDotChecked: { background: C.pine, borderColor: C.pine },
   pillInfo: { display: "flex", flexDirection: "column" },
-  pillName: { fontSize: 14, fontWeight: 600, color: C.ink },
+  pillName: { fontSize: 16.5, fontWeight: 600, color: C.ink },
   pillNameChecked: { color: C.pine },
-  pillDose: { fontSize: 12, color: C.muted, marginTop: 2 },
+  pillDose: { fontSize: 14, color: C.muted, marginTop: 2 },
   cardList: { display: "flex", flexDirection: "column", gap: 10 },
   supplementCard: { background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 },
   supplementCardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" },
-  supplementName: { fontSize: 15, fontWeight: 700 },
-  supplementDose: { fontSize: 12, color: C.muted, marginTop: 2 },
-  supplementNote: { fontSize: 12, color: C.muted, marginTop: 8, fontStyle: "italic" },
+  supplementName: { fontSize: 17.5, fontWeight: 700 },
+  supplementDose: { fontSize: 14, color: C.muted, marginTop: 2 },
+  supplementMeta: { fontSize: 13, color: C.muted, marginTop: 3 },
+  servingsBadge: { fontSize: 13, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 9px", color: C.pine, fontWeight: 700, whiteSpace: "nowrap" },
+  servingsBadgeLow: { background: "#FBF2E4", border: `1px solid #EAD3A0`, color: C.amber },
+  servingsBadgeEmpty: { background: C.avoidBg, border: `1px solid #E6CBB9`, color: C.rust },
+  supplementNote: { fontSize: 14, color: C.muted, marginTop: 8, fontStyle: "italic" },
   iconBtnGhost: { background: "transparent", border: "none", cursor: "pointer", padding: 4, flexShrink: 0 },
   chipRow: { display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 },
-  timeChip: { fontSize: 11, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 10px", color: C.pine, fontWeight: 600 },
-  timeChipMuted: { fontSize: 11, color: C.muted, fontStyle: "italic" },
-  ingredientChip: { fontSize: 11, background: "#F0EBE0", border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 10px", color: C.ink, fontWeight: 500 },
-  timeChipSelectable: { fontSize: 13, background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: "6px 14px", color: C.muted, cursor: "pointer", fontWeight: 600 },
+  timeChip: { fontSize: 13, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 10px", color: C.pine, fontWeight: 600 },
+  timeChipMuted: { fontSize: 13, color: C.muted, fontStyle: "italic" },
+  timeChipMutedBtn: { fontSize: 13, color: C.rust, fontStyle: "italic", background: "transparent", border: `1px dashed ${C.rust}`, borderRadius: 12, padding: "3px 10px", cursor: "pointer", fontWeight: 600 },
+  ingredientChip: { fontSize: 13, background: "#F0EBE0", border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 10px", color: C.ink, fontWeight: 500 },
+  timeChipSelectable: { fontSize: 15.5, background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: "6px 14px", color: C.muted, cursor: "pointer", fontWeight: 600 },
   timeChipSelected: { background: C.pine, color: "#fff", borderColor: C.pine },
   filterRow: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 },
-  filterChip: { fontSize: 12, background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "6px 12px", color: C.muted, cursor: "pointer", fontWeight: 600 },
+  filterChip: { fontSize: 14, background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "6px 12px", color: C.muted, cursor: "pointer", fontWeight: 600 },
   filterChipActive: { background: C.ink, color: "#fff", borderColor: C.ink },
   nutrientCard: { background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 },
   nutrientCardTop: { display: "flex", justifyContent: "space-between", alignItems: "center" },
-  nutrientName: { fontSize: 15, fontWeight: 700, fontFamily: "'Noto Serif TC', serif" },
-  nutrientCategory: { fontSize: 11, color: C.amber, fontWeight: 700 },
-  nutrientFunc: { fontSize: 13, color: C.ink, opacity: 0.85, margin: "8px 0 10px", lineHeight: 1.5 },
+  nutrientName: { fontSize: 17.5, fontWeight: 700, fontFamily: "'Noto Serif TC', serif" },
+  nutrientCategory: { fontSize: 13, color: C.amber, fontWeight: 700 },
+  nutrientFunc: { fontSize: 15.5, color: C.ink, opacity: 0.85, margin: "8px 0 10px", lineHeight: 1.5 },
   rdaRow: { display: "flex", gap: 8, marginTop: 8 },
   rdaBox: { flex: 1, background: C.paper, borderRadius: 10, padding: "8px 10px" },
-  rdaLabel: { display: "block", fontSize: 10, color: C.muted, marginBottom: 3 },
-  rdaValue: { display: "block", fontSize: 12, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: C.pine },
-  rdaValueAlert: { display: "block", fontSize: 12, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: C.rust },
+  rdaLabel: { display: "block", fontSize: 12, color: C.muted, marginBottom: 3 },
+  rdaValue: { display: "block", fontSize: 14, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: C.pine },
+  rdaValueAlert: { display: "block", fontSize: 14, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: C.rust },
   comboSectionHead: { display: "flex", alignItems: "center", gap: 6, marginBottom: 10 },
   comboCardGood: { background: C.goodBg, border: `1px solid #C9D9CC`, borderRadius: 14, padding: 14 },
   comboCardAvoid: { background: C.avoidBg, border: `1px solid #E6CBB9`, borderRadius: 14, padding: 14, marginBottom: 8 },
-  comboPair: { fontSize: 14, fontWeight: 700 },
+  comboPair: { fontSize: 16.5, fontWeight: 700 },
   comboPlus: { color: C.muted, fontWeight: 400 },
-  comboNote: { fontSize: 13, color: C.ink, opacity: 0.85, margin: "6px 0 0", lineHeight: 1.5 },
-  disclaimer: { fontSize: 11, color: C.muted, marginTop: 20, lineHeight: 1.6, borderTop: `1px solid ${C.line}`, paddingTop: 14 },
-  disclaimerSmall: { fontSize: 11, color: C.muted, marginTop: 14, lineHeight: 1.6, fontStyle: "italic" },
+  comboNote: { fontSize: 15.5, color: C.ink, opacity: 0.85, margin: "6px 0 0", lineHeight: 1.5 },
+  disclaimer: { fontSize: 13, color: C.muted, marginTop: 20, lineHeight: 1.6, borderTop: `1px solid ${C.line}`, paddingTop: 14 },
+  disclaimerSmall: { fontSize: 13, color: C.muted, marginTop: 14, lineHeight: 1.6, fontStyle: "italic" },
   emptyState: { display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 10, padding: "36px 20px", background: C.card, border: `1px dashed ${C.line}`, borderRadius: 14 },
-  emptyText: { fontSize: 13, color: C.muted, lineHeight: 1.6, margin: 0 },
+  emptyText: { fontSize: 15.5, color: C.muted, lineHeight: 1.6, margin: 0 },
   productCard: { background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 },
   productCardActive: { borderColor: C.pine, boxShadow: `0 0 0 1px ${C.pine}` },
   productCardTop: { display: "flex", gap: 10, alignItems: "flex-start" },
-  productBrand: { fontSize: 11, color: C.amber, fontWeight: 700 },
-  productName: { fontSize: 15, fontWeight: 700, marginTop: 1 },
-  productOwner: { fontSize: 10.5, color: C.muted, marginTop: 3 },
+  productBrand: { fontSize: 13, color: C.amber, fontWeight: 700 },
+  productName: { fontSize: 17.5, fontWeight: 700, marginTop: 1 },
+  productOwner: { fontSize: 12.5, color: C.muted, marginTop: 3 },
   thumbImg: { borderRadius: 10, objectFit: "cover", border: `1px solid ${C.line}`, flexShrink: 0 },
   thumbPlaceholder: { borderRadius: 10, background: C.paper, border: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
   productActionsRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, gap: 8, flexWrap: "wrap" },
-  compareCheckLabel: { display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: C.ink, fontWeight: 600, cursor: "pointer" },
+  compareCheckLabel: { display: "flex", alignItems: "center", gap: 6, fontSize: 15, color: C.ink, fontWeight: 600, cursor: "pointer" },
   checkboxNative: { width: 16, height: 16, accentColor: C.pine, cursor: "pointer" },
-  linkBtn: { display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: C.pine, border: `1px solid ${C.line}`, borderRadius: 10, padding: "6px 10px", textDecoration: "none", fontWeight: 600 },
-  smallSolidBtn: { fontSize: 12, background: C.ink, color: "#fff", border: "none", borderRadius: 10, padding: "7px 12px", fontWeight: 600, cursor: "pointer" },
+  linkBtn: { display: "flex", alignItems: "center", gap: 4, fontSize: 14, color: C.pine, border: `1px solid ${C.line}`, borderRadius: 10, padding: "6px 10px", textDecoration: "none", fontWeight: 600 },
+  smallSolidBtn: { fontSize: 14, background: C.ink, color: "#fff", border: "none", borderRadius: 10, padding: "7px 12px", fontWeight: 600, cursor: "pointer" },
   comparePanel: { marginTop: 22, background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 16 },
-  compareChip: { fontSize: 11, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 10px", color: C.ink, fontWeight: 600 },
-  compareOkBox: { fontSize: 13, color: C.pine, background: C.goodBg, borderRadius: 10, padding: "10px 12px", marginTop: 10, lineHeight: 1.5 },
-  compareSubhead: { display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: C.rust, marginBottom: 8 },
+  intakePanel: { background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 16, marginBottom: 16 },
+  intakeGrid: { display: "flex", flexDirection: "column", gap: 8, marginTop: 4 },
+  intakeRow: { background: C.paper, borderRadius: 10, padding: "10px 12px" },
+  intakeRowOver: { background: C.avoidBg },
+  intakeRowTop: { display: "flex", alignItems: "center", gap: 8 },
+  intakeName: { fontSize: 14, fontWeight: 700, color: C.ink },
+  intakeAmount: { fontSize: 12.5, color: C.muted, marginTop: 3, fontFamily: "'JetBrains Mono', monospace" },
+  intakeCaveat: { fontSize: 11, color: C.muted, marginTop: 4, fontStyle: "italic" },
+  overBadge: { fontSize: 10.5, background: C.rust, color: "#fff", borderRadius: 10, padding: "2px 8px", fontWeight: 700 },
+  okBadge: { fontSize: 10.5, background: C.goodBg, color: C.pine, borderRadius: 10, padding: "2px 8px", fontWeight: 700 },
+  unknownBadge: { fontSize: 10.5, background: C.paper, border: `1px solid ${C.line}`, color: C.muted, borderRadius: 10, padding: "2px 8px", fontWeight: 700 },
+  compareChip: { fontSize: 13, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 10px", color: C.ink, fontWeight: 600 },
+  compareOkBox: { fontSize: 15.5, color: C.pine, background: C.goodBg, borderRadius: 10, padding: "10px 12px", marginTop: 10, lineHeight: 1.5 },
+  compareSubhead: { display: "flex", alignItems: "center", gap: 6, fontSize: 15, fontWeight: 700, color: C.rust, marginBottom: 8 },
   duplicateCard: { background: C.avoidBg, border: `1px solid #E6CBB9`, borderRadius: 12, padding: 12, marginBottom: 8 },
   duplicateSources: { display: "flex", flexDirection: "column", gap: 3, marginTop: 6 },
-  duplicateSourceTag: { fontSize: 11.5, color: C.ink, opacity: 0.85 },
+  duplicateSourceTag: { fontSize: 13.5, color: C.ink, opacity: 0.85 },
   modalOverlay: { position: "fixed", inset: 0, background: "rgba(32,52,44,0.4)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 50 },
   modalCard: { background: C.paper, width: "100%", maxWidth: 480, borderRadius: "20px 20px 0 0", padding: 20, maxHeight: "85vh", overflowY: "auto" },
   modalHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
-  modalTitle: { fontFamily: "'Noto Serif TC', serif", fontSize: 17, fontWeight: 700 },
-  label: { display: "block", fontSize: 12, color: C.muted, marginTop: 12, marginBottom: 6, fontWeight: 600 },
-  input: { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 10, border: `1px solid ${C.line}`, background: C.card, fontSize: 14, fontFamily: "'Noto Sans TC', sans-serif", color: C.ink },
+  modalTitle: { fontFamily: "'Noto Serif TC', serif", fontSize: 20, fontWeight: 700 },
+  label: { display: "block", fontSize: 14, color: C.muted, marginTop: 12, marginBottom: 6, fontWeight: 600 },
+  fieldHint: { fontSize: 13, color: C.muted, lineHeight: 1.5, margin: "6px 0 0" },
+  twoColRow: { display: "flex", gap: 10, marginTop: 0 },
+  input: { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 10, border: `1px solid ${C.line}`, background: C.card, fontSize: 16.5, fontFamily: "'Noto Sans TC', sans-serif", color: C.ink },
   ingredientRow: { display: "flex", gap: 6, alignItems: "center", marginTop: 8 },
-  addIngredientBtn: { display: "flex", alignItems: "center", gap: 4, background: "transparent", border: `1px dashed ${C.line}`, borderRadius: 10, padding: "6px 12px", fontSize: 12, color: C.pine, fontWeight: 600, cursor: "pointer", marginTop: 8 },
-  submitBtn: { width: "100%", marginTop: 20, padding: "13px 0", background: C.ink, color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer" },
+  addIngredientBtn: { display: "flex", alignItems: "center", gap: 4, background: "transparent", border: `1px dashed ${C.line}`, borderRadius: 10, padding: "6px 12px", fontSize: 14, color: C.pine, fontWeight: 600, cursor: "pointer", marginTop: 8 },
+  submitBtn: { width: "100%", marginTop: 20, padding: "13px 0", background: C.ink, color: "#fff", border: "none", borderRadius: 12, fontSize: 17.5, fontWeight: 700, cursor: "pointer" },
 };
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
