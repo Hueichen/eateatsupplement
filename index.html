@@ -15,6 +15,11 @@
   .app-main { width: 100%; margin: 0 auto; }
   .app-inner { width: 100%; margin: 0 auto; }
 
+  .product-grid { display: grid; grid-template-columns: 1fr; gap: 14px; align-items: start; }
+  @media (min-width: 640px) {
+    .product-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
   @media (min-width: 860px) {
     body { padding: 32px 16px; }
     .app-shell {
@@ -25,10 +30,11 @@
       box-shadow: 0 16px 44px rgba(120,50,35,0.28);
       overflow: hidden;
     }
-    .app-main { max-width: 900px; padding-left: 32px; padding-right: 32px; }
-    .app-inner { max-width: 900px; padding-left: 32px; padding-right: 32px; }
+    .app-main { max-width: 1040px; padding-left: 32px; padding-right: 32px; }
+    .app-inner { max-width: 1040px; padding-left: 32px; padding-right: 32px; }
     .app-modal-overlay { align-items: center !important; }
     .app-modal-card { max-width: 560px !important; border-radius: 20px !important; max-height: 88vh !important; }
+    .product-grid { grid-template-columns: repeat(3, 1fr); }
   }
 </style>
 </head>
@@ -159,6 +165,13 @@ const NUTRIENT_DB = [
 ];
 const nutrientByName = (name) => NUTRIENT_DB.find((n) => n.name === name);
 
+/* 一個備品的標籤 = 手動填的標籤 + 依成分自動判斷的分類（維生素、礦物質…），去重 */
+function productTags(p) {
+  const auto = (p.ingredients || []).map((ing) => { const ref = nutrientByName(ing.name); return ref ? ref.category : null; }).filter(Boolean);
+  const manual = p.tags || [];
+  return Array.from(new Set([...manual, ...auto]));
+}
+
 /* 將 amount 從 fromUnit 換算成 toUnit（僅支援公制重量單位互換），無法換算回傳 null */
 function convertAmount(amount, fromUnit, toUnit) {
   if (!fromUnit || !toUnit) return null;
@@ -260,6 +273,7 @@ function excelRowToProduct(row) {
     link: "",
     dailyDose: "",
     note: noteParts.join("｜"),
+    tags: [],
     ingredients,
   };
 }
@@ -741,6 +755,16 @@ function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggle
   const compareProducts = productLibrary.filter((p) => compareIds.includes(p.id));
   const trialIntake = React.useMemo(() => summarizeIntake(compareProducts), [compareProducts]);
   const fileInputRef = React.useRef(null);
+  const [tagFilter, setTagFilter] = useState("全部");
+
+  const allTags = React.useMemo(() => {
+    const set = new Set();
+    productLibrary.forEach((p) => productTags(p).forEach((t) => set.add(t)));
+    return ["全部", ...Array.from(set)];
+  }, [productLibrary]);
+
+  const filteredLibrary = tagFilter === "全部" ? productLibrary : productLibrary.filter((p) => productTags(p).includes(tagFilter));
+
   return (
     <div>
       <div style={styles.sectionHeadRow}>
@@ -759,30 +783,45 @@ function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggle
         </div>
       </div>
       <p style={styles.helperText}>這是公用備品資料庫，所有人都能瀏覽；登入後才能新增或刪除自己登錄的項目。缺貨時可快速比較各品牌備品，勾選「試算」可列出勾選品項的總元素表並標示是否超過每日用量，也會一併比對現有保健品。</p>
+
+      {allTags.length > 1 && (
+        <div style={styles.filterRow}>
+          {allTags.map((t) => (
+            <button key={t} onClick={() => setTagFilter(t)} style={{ ...styles.filterChip, ...(tagFilter === t ? styles.filterChipActive : {}) }}>{t}</button>
+          ))}
+        </div>
+      )}
+
       {productLibrary.length === 0 && <EmptyState text="還沒有任何人登錄備品。登入後點「登錄備品」記錄品牌、名稱、成分、購買連結與每日用量，缺貨時大家都能快速挑選替代品。" />}
-      <div style={styles.cardList}>
-        {productLibrary.map((p) => {
+      {productLibrary.length > 0 && filteredLibrary.length === 0 && <EmptyState text="這個標籤下沒有備品，換一個標籤看看。" />}
+
+      <div style={styles.productGrid} className="product-grid">
+        {filteredLibrary.map((p) => {
           const inCompare = compareIds.includes(p.id);
           const canDelete = user && user.uid === p.ownerUid;
+          const tags = productTags(p);
           return (
             <div key={p.id} style={{ ...styles.productCard, ...(inCompare ? styles.productCardActive : {}) }}>
               <div style={styles.productCardTop}>
                 <ProductThumb src={p.image} size={56} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {p.brand && <div style={styles.productBrand}>{p.brand}</div>}
-                  <div style={styles.productName}>{p.name}</div>
+                  <div style={styles.productNameClamp}>{p.name}</div>
                   {p.dailyDose && <div style={styles.supplementDose}>每日用量：{p.dailyDose}</div>}
                   {p.ownerName && <div style={styles.productOwner}>登錄者：{p.ownerName}</div>}
                 </div>
                 {canDelete && <button onClick={() => onRemoveProduct(p.id, p.ownerUid)} style={styles.iconBtnGhost}><ITrash size={16} color={C.muted} /></button>}
               </div>
+              {tags.length > 0 && (
+                <div style={styles.chipRow}>{tags.map((t) => <span key={t} style={styles.tagChip}>{t}</span>)}</div>
+              )}
               {p.ingredients && p.ingredients.length > 0 && (
                 <div style={styles.chipRow}>{p.ingredients.map((ing, i) => <span key={i} style={styles.ingredientChip}>{ing.name}{ing.amount ? ` · ${ing.amount}${ing.unit || ""}` : ""}</span>)}</div>
               )}
               {p.note && <div style={styles.supplementNote}>{p.note}</div>}
               <div style={styles.productActionsRow}>
                 <label style={styles.compareCheckLabel}><input type="checkbox" checked={inCompare} onChange={() => onToggleCompare(p.id)} style={styles.checkboxNative} /> 勾選試算</label>
-                <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {p.link && (<a href={p.link} target="_blank" rel="noopener noreferrer" style={styles.linkBtn}><IExternal size={13} /> 購買連結</a>)}
                   <button onClick={() => onAddToMine(p)} style={styles.smallSolidBtn}>{user ? "加入我的保健品" : "登入後加入"}</button>
                 </div>
@@ -987,6 +1026,7 @@ function AddProductModal({ onClose, onAdd }) {
   const [link, setLink] = useState("");
   const [dailyDose, setDailyDose] = useState("");
   const [note, setNote] = useState("");
+  const [tagsInput, setTagsInput] = useState("");
   const [ingredients, setIngredients] = useState([{ name: "", amount: "", unit: "mg" }]);
 
   const handleSubmit = () => {
@@ -994,6 +1034,7 @@ function AddProductModal({ onClose, onAdd }) {
     onAdd({
       brand: brand.trim(), name: name.trim(), image: image.trim(), link: link.trim(),
       dailyDose: dailyDose.trim(), note: note.trim(),
+      tags: tagsInput.split(/[,，]/).map((t) => t.trim()).filter(Boolean),
       ingredients: ingredients.filter((ing) => ing.name.trim()).map((ing) => ({ name: ing.name.trim(), amount: ing.amount.trim(), unit: ing.unit })),
     });
   };
@@ -1013,6 +1054,9 @@ function AddProductModal({ onClose, onAdd }) {
         <IngredientEditor ingredients={ingredients} onChange={setIngredients} />
         <label style={styles.label}>每日用量</label>
         <input style={styles.input} value={dailyDose} onChange={(e) => setDailyDose(e.target.value)} placeholder="例如：每日1顆，隨餐服用" />
+        <label style={styles.label}>標籤（選填，用逗號分隔）</label>
+        <input style={styles.input} value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} placeholder="例如：深海魚油, 複方" />
+        <p style={styles.fieldHint}>系統也會依你填的成分自動加上分類標籤（例如維生素、礦物質），這裡填的是額外的自訂標籤。</p>
         <label style={styles.label}>購買連結（選填）</label>
         <input style={styles.input} value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://..." />
         <label style={styles.label}>備註建議（選填）</label>
@@ -1035,129 +1079,132 @@ const styles = {
   header: { padding: "20px 20px 16px", borderBottom: `1px solid ${C.line}`, background: "linear-gradient(135deg, #FBE0D8 0%, #FDF4F0 60%)" },
   headerTopRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
   headerTop: { display: "flex", alignItems: "center", gap: 6 },
-  brandMark: { fontFamily: "'JetBrains Mono', monospace", fontSize: 14, letterSpacing: "0.12em", color: C.amber, fontWeight: 600 },
-  title: { fontFamily: "'Noto Serif TC', serif", fontWeight: 900, fontSize: 30.5, margin: 0, letterSpacing: "0.02em" },
-  subtitle: { margin: "6px 0 0", fontSize: 15.5, color: C.muted },
-  fbWarning: { margin: "10px 0 0", fontSize: 13.5, color: C.rust, background: C.avoidBg, padding: "8px 10px", borderRadius: 8, lineHeight: 1.5 },
+  brandMark: { fontFamily: "'JetBrains Mono', monospace", fontSize: 18.5, letterSpacing: "0.12em", color: C.amber, fontWeight: 600 },
+  title: { fontFamily: "'Noto Serif TC', serif", fontWeight: 900, fontSize: 40.5, margin: 0, letterSpacing: "0.02em" },
+  subtitle: { margin: "6px 0 0", fontSize: 20.5, color: C.muted },
+  fbWarning: { margin: "10px 0 0", fontSize: 18, color: C.rust, background: C.avoidBg, padding: "8px 10px", borderRadius: 8, lineHeight: 1.5 },
   authBox: { display: "flex", alignItems: "center", gap: 8 },
-  authName: { fontSize: 14, color: C.ink, fontWeight: 600, maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  authBtnGhost: { display: "flex", alignItems: "center", gap: 4, background: "transparent", border: `1px solid ${C.line}`, borderRadius: 10, padding: "5px 9px", fontSize: 13.5, color: C.muted, cursor: "pointer", fontWeight: 600 },
-  authBtnSolid: { background: C.ink, color: "#fff", border: "none", borderRadius: 10, padding: "7px 12px", fontSize: 14, fontWeight: 700, cursor: "pointer" },
-  authLoading: { fontSize: 14, color: C.muted },
+  authName: { fontSize: 18.5, color: C.ink, fontWeight: 600, maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  authBtnGhost: { display: "flex", alignItems: "center", gap: 4, background: "transparent", border: `1px solid ${C.line}`, borderRadius: 10, padding: "5px 9px", fontSize: 18, color: C.muted, cursor: "pointer", fontWeight: 600 },
+  authBtnSolid: { background: C.ink, color: "#fff", border: "none", borderRadius: 10, padding: "7px 12px", fontSize: 18.5, fontWeight: 700, cursor: "pointer" },
+  authLoading: { fontSize: 18.5, color: C.muted },
   tabbar: { display: "flex", borderBottom: `1px solid ${C.line}`, background: C.paper, position: "sticky", top: 0, zIndex: 10 },
-  tabBtn: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "12px 2px 10px", background: "transparent", border: "none", fontSize: 12.5, cursor: "pointer", position: "relative" },
+  tabBtn: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "12px 2px 10px", background: "transparent", border: "none", fontSize: 16.5, cursor: "pointer", position: "relative" },
   tabBtnActive: {},
   tabUnderline: { position: "absolute", bottom: -1, left: "20%", right: "20%", height: 2, background: C.amber, borderRadius: 2 },
   main: { padding: "18px 16px 8px" },
   gateBox: { display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 10, padding: "48px 20px", background: C.card, border: `1px dashed ${C.line}`, borderRadius: 14 },
-  gateText: { fontSize: 15.5, color: C.muted, lineHeight: 1.6, margin: 0, maxWidth: 320 },
-  sectionHead: { fontFamily: "'Noto Serif TC', serif", fontSize: 21, fontWeight: 700, margin: "0 0 14px" },
+  gateText: { fontSize: 20.5, color: C.muted, lineHeight: 1.6, margin: 0, maxWidth: 320 },
+  sectionHead: { fontFamily: "'Noto Serif TC', serif", fontSize: 28, fontWeight: 700, margin: "0 0 14px" },
   sectionHeadRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-  helperText: { fontSize: 15, color: C.muted, lineHeight: 1.6, margin: "0 0 16px" },
-  addBtn: { display: "flex", alignItems: "center", gap: 5, background: C.ink, color: "#fff", border: "none", borderRadius: 20, padding: "8px 14px", fontSize: 15.5, fontWeight: 600, cursor: "pointer" },
-  addBtnGhost: { display: "flex", alignItems: "center", gap: 5, background: "transparent", color: C.pine, border: `1px solid ${C.pine}`, borderRadius: 20, padding: "8px 14px", fontSize: 15.5, fontWeight: 600, cursor: "pointer" },
+  helperText: { fontSize: 20, color: C.muted, lineHeight: 1.6, margin: "0 0 16px" },
+  addBtn: { display: "flex", alignItems: "center", gap: 5, background: C.ink, color: "#fff", border: "none", borderRadius: 20, padding: "8px 14px", fontSize: 20.5, fontWeight: 600, cursor: "pointer" },
+  addBtnGhost: { display: "flex", alignItems: "center", gap: 5, background: "transparent", color: C.pine, border: `1px solid ${C.pine}`, borderRadius: 20, padding: "8px 14px", fontSize: 20.5, fontWeight: 600, cursor: "pointer" },
   dateRow: { marginBottom: 18 },
-  dateInput: { fontFamily: "'JetBrains Mono', monospace", fontSize: 15.5, padding: "8px 10px", borderRadius: 8, border: `1px solid ${C.line}`, background: C.card, color: C.ink, marginBottom: 12 },
+  dateInput: { fontFamily: "'JetBrains Mono', monospace", fontSize: 20.5, padding: "8px 10px", borderRadius: 8, border: `1px solid ${C.line}`, background: C.card, color: C.ink, marginBottom: 12 },
   progressWrap: { display: "flex", alignItems: "center", gap: 10 },
   progressTrack: { flex: 1, height: 8, background: C.line, borderRadius: 4, overflow: "hidden" },
   progressFill: { height: "100%", background: C.pine, borderRadius: 4, transition: "width 0.3s ease" },
-  progressLabel: { fontSize: 14, color: C.muted, fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap" },
+  progressLabel: { fontSize: 18.5, color: C.muted, fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap" },
   slotSection: { marginBottom: 20 },
   slotHeader: { display: "flex", alignItems: "center", gap: 6, marginBottom: 8 },
-  slotTitle: { fontSize: 15.5, fontWeight: 700, color: C.ink },
-  slotCount: { fontSize: 13, color: C.muted, fontFamily: "'JetBrains Mono', monospace", marginLeft: "auto" },
+  slotTitle: { fontSize: 20.5, fontWeight: 700, color: C.ink },
+  slotCount: { fontSize: 17, color: C.muted, fontFamily: "'JetBrains Mono', monospace", marginLeft: "auto" },
   pillRow: { display: "flex", flexDirection: "column", gap: 8 },
   pillBlister: { display: "flex", alignItems: "center", gap: 12, background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "12px 14px", cursor: "pointer", textAlign: "left", width: "100%" },
   pillBlisterChecked: { background: C.goodBg, borderColor: C.pine },
   pillDot: { width: 26, height: 26, borderRadius: "50%", border: `2px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
   pillDotChecked: { background: C.pine, borderColor: C.pine },
   pillInfo: { display: "flex", flexDirection: "column" },
-  pillName: { fontSize: 16.5, fontWeight: 600, color: C.ink },
+  pillName: { fontSize: 22, fontWeight: 600, color: C.ink },
   pillNameChecked: { color: C.pine },
-  pillDose: { fontSize: 14, color: C.muted, marginTop: 2 },
+  pillDose: { fontSize: 18.5, color: C.muted, marginTop: 2 },
   cardList: { display: "flex", flexDirection: "column", gap: 10 },
   supplementCard: { background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 },
   supplementCardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" },
-  supplementName: { fontSize: 17.5, fontWeight: 700 },
-  supplementDose: { fontSize: 14, color: C.muted, marginTop: 2 },
-  supplementMeta: { fontSize: 13, color: C.muted, marginTop: 3 },
-  servingsBadge: { fontSize: 13, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 9px", color: C.pine, fontWeight: 700, whiteSpace: "nowrap" },
+  supplementName: { fontSize: 23, fontWeight: 700 },
+  supplementDose: { fontSize: 18.5, color: C.muted, marginTop: 2 },
+  supplementMeta: { fontSize: 17, color: C.muted, marginTop: 3 },
+  servingsBadge: { fontSize: 17, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 9px", color: C.pine, fontWeight: 700, whiteSpace: "nowrap" },
   servingsBadgeLow: { background: "#FBF2E4", border: `1px solid #EAD3A0`, color: C.amber },
   servingsBadgeEmpty: { background: C.avoidBg, border: `1px solid #E6CBB9`, color: C.rust },
-  supplementNote: { fontSize: 14, color: C.muted, marginTop: 8, fontStyle: "italic" },
+  supplementNote: { fontSize: 18.5, color: C.muted, marginTop: 8 },
   iconBtnGhost: { background: "transparent", border: "none", cursor: "pointer", padding: 4, flexShrink: 0 },
   chipRow: { display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 },
-  timeChip: { fontSize: 13, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 10px", color: C.pine, fontWeight: 600 },
-  timeChipMuted: { fontSize: 13, color: C.muted, fontStyle: "italic" },
-  timeChipMutedBtn: { fontSize: 13, color: C.rust, fontStyle: "italic", background: "transparent", border: `1px dashed ${C.rust}`, borderRadius: 12, padding: "3px 10px", cursor: "pointer", fontWeight: 600 },
-  ingredientChip: { fontSize: 13, background: "#F0EBE0", border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 10px", color: C.ink, fontWeight: 500 },
-  timeChipSelectable: { fontSize: 15.5, background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: "6px 14px", color: C.muted, cursor: "pointer", fontWeight: 600 },
+  timeChip: { fontSize: 17, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 10px", color: C.pine, fontWeight: 600 },
+  timeChipMuted: { fontSize: 17, color: C.muted },
+  timeChipMutedBtn: { fontSize: 17, color: C.rust, background: "transparent", border: `1px dashed ${C.rust}`, borderRadius: 12, padding: "3px 10px", cursor: "pointer", fontWeight: 600 },
+  ingredientChip: { fontSize: 17, background: "#F0EBE0", border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 10px", color: C.ink, fontWeight: 500 },
+  timeChipSelectable: { fontSize: 20.5, background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: "6px 14px", color: C.muted, cursor: "pointer", fontWeight: 600 },
   timeChipSelected: { background: C.pine, color: "#fff", borderColor: C.pine },
   filterRow: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 },
-  filterChip: { fontSize: 14, background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "6px 12px", color: C.muted, cursor: "pointer", fontWeight: 600 },
+  filterChip: { fontSize: 18.5, background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "6px 12px", color: C.muted, cursor: "pointer", fontWeight: 600 },
   filterChipActive: { background: C.ink, color: "#fff", borderColor: C.ink },
   nutrientCard: { background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 },
   nutrientCardTop: { display: "flex", justifyContent: "space-between", alignItems: "center" },
-  nutrientName: { fontSize: 17.5, fontWeight: 700, fontFamily: "'Noto Serif TC', serif" },
-  nutrientCategory: { fontSize: 13, color: C.amber, fontWeight: 700 },
-  nutrientFunc: { fontSize: 15.5, color: C.ink, opacity: 0.85, margin: "8px 0 10px", lineHeight: 1.5 },
+  nutrientName: { fontSize: 23, fontWeight: 700, fontFamily: "'Noto Serif TC', serif" },
+  nutrientCategory: { fontSize: 17, color: C.amber, fontWeight: 700 },
+  nutrientFunc: { fontSize: 20.5, color: C.ink, opacity: 0.85, margin: "8px 0 10px", lineHeight: 1.5 },
   rdaRow: { display: "flex", gap: 8, marginTop: 8 },
   rdaBox: { flex: 1, background: C.paper, borderRadius: 10, padding: "8px 10px" },
-  rdaLabel: { display: "block", fontSize: 12, color: C.muted, marginBottom: 3 },
-  rdaValue: { display: "block", fontSize: 14, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: C.pine },
-  rdaValueAlert: { display: "block", fontSize: 14, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: C.rust },
+  rdaLabel: { display: "block", fontSize: 16, color: C.muted, marginBottom: 3 },
+  rdaValue: { display: "block", fontSize: 18.5, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: C.pine },
+  rdaValueAlert: { display: "block", fontSize: 18.5, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: C.rust },
   comboSectionHead: { display: "flex", alignItems: "center", gap: 6, marginBottom: 10 },
   comboCardGood: { background: C.goodBg, border: `1px solid #C9D9CC`, borderRadius: 14, padding: 14 },
   comboCardAvoid: { background: C.avoidBg, border: `1px solid #E6CBB9`, borderRadius: 14, padding: 14, marginBottom: 8 },
-  comboPair: { fontSize: 16.5, fontWeight: 700 },
+  comboPair: { fontSize: 22, fontWeight: 700 },
   comboPlus: { color: C.muted, fontWeight: 400 },
-  comboNote: { fontSize: 15.5, color: C.ink, opacity: 0.85, margin: "6px 0 0", lineHeight: 1.5 },
-  disclaimer: { fontSize: 13, color: C.muted, marginTop: 20, lineHeight: 1.6, borderTop: `1px solid ${C.line}`, paddingTop: 14 },
-  disclaimerSmall: { fontSize: 13, color: C.muted, marginTop: 14, lineHeight: 1.6, fontStyle: "italic" },
+  comboNote: { fontSize: 20.5, color: C.ink, opacity: 0.85, margin: "6px 0 0", lineHeight: 1.5 },
+  disclaimer: { fontSize: 17, color: C.muted, marginTop: 20, lineHeight: 1.6, borderTop: `1px solid ${C.line}`, paddingTop: 14 },
+  disclaimerSmall: { fontSize: 17, color: C.muted, marginTop: 14, lineHeight: 1.6 },
   emptyState: { display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 10, padding: "36px 20px", background: C.card, border: `1px dashed ${C.line}`, borderRadius: 14 },
-  emptyText: { fontSize: 15.5, color: C.muted, lineHeight: 1.6, margin: 0 },
+  emptyText: { fontSize: 20.5, color: C.muted, lineHeight: 1.6, margin: 0 },
   productCard: { background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 },
   productCardActive: { borderColor: C.pine, boxShadow: `0 0 0 1px ${C.pine}` },
   productCardTop: { display: "flex", gap: 10, alignItems: "flex-start" },
-  productBrand: { fontSize: 13, color: C.amber, fontWeight: 700 },
-  productName: { fontSize: 17.5, fontWeight: 700, marginTop: 1 },
-  productOwner: { fontSize: 12.5, color: C.muted, marginTop: 3 },
+  productBrand: { fontSize: 17, color: C.amber, fontWeight: 700 },
+  productName: { fontSize: 23, fontWeight: 700, marginTop: 1 },
+  productNameClamp: { fontSize: 23, fontWeight: 700, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  productGrid: { display: "flex", flexDirection: "column", gap: 10 },
+  tagChip: { fontSize: 15, background: "#E1F8F5", border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 10px", color: C.pine, fontWeight: 600 },
+  productOwner: { fontSize: 16.5, color: C.muted, marginTop: 3 },
   thumbImg: { borderRadius: 10, objectFit: "cover", border: `1px solid ${C.line}`, flexShrink: 0 },
   thumbPlaceholder: { borderRadius: 10, background: C.paper, border: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
   productActionsRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, gap: 8, flexWrap: "wrap" },
-  compareCheckLabel: { display: "flex", alignItems: "center", gap: 6, fontSize: 15, color: C.ink, fontWeight: 600, cursor: "pointer" },
+  compareCheckLabel: { display: "flex", alignItems: "center", gap: 6, fontSize: 20, color: C.ink, fontWeight: 600, cursor: "pointer" },
   checkboxNative: { width: 16, height: 16, accentColor: C.pine, cursor: "pointer" },
-  linkBtn: { display: "flex", alignItems: "center", gap: 4, fontSize: 14, color: C.pine, border: `1px solid ${C.line}`, borderRadius: 10, padding: "6px 10px", textDecoration: "none", fontWeight: 600 },
-  smallSolidBtn: { fontSize: 14, background: C.ink, color: "#fff", border: "none", borderRadius: 10, padding: "7px 12px", fontWeight: 600, cursor: "pointer" },
+  linkBtn: { display: "flex", alignItems: "center", gap: 4, fontSize: 18.5, color: C.pine, border: `1px solid ${C.line}`, borderRadius: 10, padding: "6px 10px", textDecoration: "none", fontWeight: 600 },
+  smallSolidBtn: { fontSize: 18.5, background: C.ink, color: "#fff", border: "none", borderRadius: 10, padding: "7px 12px", fontWeight: 600, cursor: "pointer" },
   comparePanel: { marginTop: 22, background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 16 },
   intakePanel: { background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 16, marginBottom: 16 },
   intakeGrid: { display: "flex", flexDirection: "column", gap: 8, marginTop: 4 },
   intakeRow: { background: C.paper, borderRadius: 10, padding: "10px 12px" },
   intakeRowOver: { background: C.avoidBg },
   intakeRowTop: { display: "flex", alignItems: "center", gap: 8 },
-  intakeName: { fontSize: 14, fontWeight: 700, color: C.ink },
-  intakeAmount: { fontSize: 12.5, color: C.muted, marginTop: 3, fontFamily: "'JetBrains Mono', monospace" },
-  intakeCaveat: { fontSize: 11, color: C.muted, marginTop: 4, fontStyle: "italic" },
-  overBadge: { fontSize: 10.5, background: C.rust, color: "#fff", borderRadius: 10, padding: "2px 8px", fontWeight: 700 },
-  okBadge: { fontSize: 10.5, background: C.goodBg, color: C.pine, borderRadius: 10, padding: "2px 8px", fontWeight: 700 },
-  unknownBadge: { fontSize: 10.5, background: C.paper, border: `1px solid ${C.line}`, color: C.muted, borderRadius: 10, padding: "2px 8px", fontWeight: 700 },
-  compareChip: { fontSize: 13, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 10px", color: C.ink, fontWeight: 600 },
-  compareOkBox: { fontSize: 15.5, color: C.pine, background: C.goodBg, borderRadius: 10, padding: "10px 12px", marginTop: 10, lineHeight: 1.5 },
-  compareSubhead: { display: "flex", alignItems: "center", gap: 6, fontSize: 15, fontWeight: 700, color: C.rust, marginBottom: 8 },
+  intakeName: { fontSize: 18.5, fontWeight: 700, color: C.ink },
+  intakeAmount: { fontSize: 16.5, color: C.muted, marginTop: 3, fontFamily: "'JetBrains Mono', monospace" },
+  intakeCaveat: { fontSize: 14.5, color: C.muted, marginTop: 4 },
+  overBadge: { fontSize: 14, background: C.rust, color: "#fff", borderRadius: 10, padding: "2px 8px", fontWeight: 700 },
+  okBadge: { fontSize: 14, background: C.goodBg, color: C.pine, borderRadius: 10, padding: "2px 8px", fontWeight: 700 },
+  unknownBadge: { fontSize: 14, background: C.paper, border: `1px solid ${C.line}`, color: C.muted, borderRadius: 10, padding: "2px 8px", fontWeight: 700 },
+  compareChip: { fontSize: 17, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 10px", color: C.ink, fontWeight: 600 },
+  compareOkBox: { fontSize: 20.5, color: C.pine, background: C.goodBg, borderRadius: 10, padding: "10px 12px", marginTop: 10, lineHeight: 1.5 },
+  compareSubhead: { display: "flex", alignItems: "center", gap: 6, fontSize: 20, fontWeight: 700, color: C.rust, marginBottom: 8 },
   duplicateCard: { background: C.avoidBg, border: `1px solid #E6CBB9`, borderRadius: 12, padding: 12, marginBottom: 8 },
   duplicateSources: { display: "flex", flexDirection: "column", gap: 3, marginTop: 6 },
-  duplicateSourceTag: { fontSize: 13.5, color: C.ink, opacity: 0.85 },
+  duplicateSourceTag: { fontSize: 18, color: C.ink, opacity: 0.85 },
   modalOverlay: { position: "fixed", inset: 0, background: "rgba(32,52,44,0.4)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 50 },
   modalCard: { background: C.paper, width: "100%", maxWidth: 480, borderRadius: "20px 20px 0 0", padding: 20, maxHeight: "85vh", overflowY: "auto" },
   modalHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
-  modalTitle: { fontFamily: "'Noto Serif TC', serif", fontSize: 20, fontWeight: 700 },
-  label: { display: "block", fontSize: 14, color: C.muted, marginTop: 12, marginBottom: 6, fontWeight: 600 },
-  fieldHint: { fontSize: 13, color: C.muted, lineHeight: 1.5, margin: "6px 0 0" },
+  modalTitle: { fontFamily: "'Noto Serif TC', serif", fontSize: 26.5, fontWeight: 700 },
+  label: { display: "block", fontSize: 18.5, color: C.muted, marginTop: 12, marginBottom: 6, fontWeight: 600 },
+  fieldHint: { fontSize: 17, color: C.muted, lineHeight: 1.5, margin: "6px 0 0" },
   twoColRow: { display: "flex", gap: 10, marginTop: 0 },
-  input: { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 10, border: `1px solid ${C.line}`, background: C.card, fontSize: 16.5, fontFamily: "'Noto Sans TC', sans-serif", color: C.ink },
+  input: { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 10, border: `1px solid ${C.line}`, background: C.card, fontSize: 22, fontFamily: "'Noto Sans TC', sans-serif", color: C.ink },
   ingredientRow: { display: "flex", gap: 6, alignItems: "center", marginTop: 8 },
-  addIngredientBtn: { display: "flex", alignItems: "center", gap: 4, background: "transparent", border: `1px dashed ${C.line}`, borderRadius: 10, padding: "6px 12px", fontSize: 14, color: C.pine, fontWeight: 600, cursor: "pointer", marginTop: 8 },
-  submitBtn: { width: "100%", marginTop: 20, padding: "13px 0", background: C.ink, color: "#fff", border: "none", borderRadius: 12, fontSize: 17.5, fontWeight: 700, cursor: "pointer" },
+  addIngredientBtn: { display: "flex", alignItems: "center", gap: 4, background: "transparent", border: `1px dashed ${C.line}`, borderRadius: 10, padding: "6px 12px", fontSize: 18.5, color: C.pine, fontWeight: 600, cursor: "pointer", marginTop: 8 },
+  submitBtn: { width: "100%", marginTop: 20, padding: "13px 0", background: C.ink, color: "#fff", border: "none", borderRadius: 12, fontSize: 23, fontWeight: 700, cursor: "pointer" },
 };
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
