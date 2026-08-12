@@ -283,11 +283,32 @@ function excelRowToProduct(row) {
     spec: row["規格"] ? String(row["規格"]).trim() : "",
     form: row["劑型"] ? String(row["劑型"]).trim() : "",
     channel: row["購買通路"] ? String(row["購買通路"]).trim() : "",
+    channelUrl: row["通路網址"] ? String(row["通路網址"]).trim() : "",
     note: row["備註"] ? String(row["備註"]).trim() : "",
     tags,
     recommender: row["推薦者"] ? String(row["推薦者"]).trim() : "",
     ingredients,
   };
+}
+
+/* 產生並下載 Excel 匯入範本，欄位跟 EXCEL_INGREDIENT_COLUMNS／excelRowToProduct 完全對應 */
+function downloadExcelTemplate() {
+  const baseCols = ["品牌", "產品名稱", "規格", "劑型", "購買通路", "通路網址", "備註", "推薦者", "標籤1", "標籤2", "標籤3", "標籤4"];
+  const ingredientCols = [];
+  Object.entries(EXCEL_INGREDIENT_COLUMNS).forEach(([col, [unitCol]]) => { ingredientCols.push(col, unitCol); });
+  const headers = [...baseCols, ...ingredientCols];
+  const example = {
+    "品牌": "GNC", "產品名稱": "維生素D3 軟膠囊", "規格": "90粒／瓶", "劑型": "軟膠囊",
+    "購買通路": "iHerb", "通路網址": "https://www.iherb.com", "備註": "隨餐服用吸收較佳",
+    "推薦者": "貓貓", "標籤1": "維生素", "標籤2": "骨骼保健",
+    "維生素D3": 25, "維生素D3單位": "mcg",
+  };
+  const row = headers.map((h) => (example[h] !== undefined ? example[h] : ""));
+  const ws = XLSX.utils.aoa_to_sheet([headers, row]);
+  ws["!cols"] = headers.map(() => ({ wch: 14 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "備品範本");
+  XLSX.writeFile(wb, "備品匯入範本.xlsx");
 }
 
 const COMBOS_GOOD = [
@@ -804,7 +825,8 @@ function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggle
     <div>
       <div style={styles.sectionHeadRow}>
         <h2 style={styles.sectionHead}>備品清單</h2>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={downloadExcelTemplate} style={styles.addBtnGhost}>下載 Excel 範本</button>
           {user && (
             <React.Fragment>
               <input ref={fileInputRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }}
@@ -942,7 +964,6 @@ function ProductDetailModal({ product, onClose }) {
     p.dailyDose && ["每日用量", p.dailyDose],
     p.spec && ["規格", p.spec],
     p.form && ["劑型", p.form],
-    p.channel && ["購買通路", p.channel],
     tags.length > 0 && ["標籤", tags.join("、")],
     recommender && ["推薦者", recommender],
     p.ownerName && ["登錄者", p.ownerName],
@@ -976,6 +997,16 @@ function ProductDetailModal({ product, onClose }) {
         )}
 
         <div style={styles.detailList}>
+          {p.channel && (
+            <div style={styles.detailLine}>
+              <span style={styles.detailLabel}>購買通路</span>
+              {p.channelUrl ? (
+                <a href={p.channelUrl} target="_blank" rel="noopener noreferrer" style={{ ...styles.detailValue, color: C.pine }}>{p.channel}</a>
+              ) : (
+                <span style={styles.detailValue}>{p.channel}</span>
+              )}
+            </div>
+          )}
           {otherLines.map(([label, value], i) => (
             <div key={i} style={styles.detailLine}>
               <span style={styles.detailLabel}>{label}</span>
@@ -1141,6 +1172,7 @@ function AddProductModal({ onClose, onAdd }) {
   const [spec, setSpec] = useState("");
   const [form, setForm] = useState("");
   const [channel, setChannel] = useState("");
+  const [channelUrl, setChannelUrl] = useState("");
   const [note, setNote] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [recommender, setRecommender] = useState("");
@@ -1150,7 +1182,7 @@ function AddProductModal({ onClose, onAdd }) {
     if (!name.trim()) return;
     onAdd({
       brand: brand.trim(), name: name.trim(), image: image.trim(), link: link.trim(),
-      dailyDose: dailyDose.trim(), spec: spec.trim(), form: form.trim(), channel: channel.trim(), note: note.trim(),
+      dailyDose: dailyDose.trim(), spec: spec.trim(), form: form.trim(), channel: channel.trim(), channelUrl: channelUrl.trim(), note: note.trim(),
       tags: tagsInput.split(/[,，]/).map((t) => t.trim()).filter(Boolean),
       recommender: recommender.trim(),
       ingredients: ingredients.filter((ing) => ing.name.trim()).map((ing) => ({ name: ing.name.trim(), amount: ing.amount.trim(), unit: ing.unit })),
@@ -1178,6 +1210,8 @@ function AddProductModal({ onClose, onAdd }) {
         <input style={styles.input} value={form} onChange={(e) => setForm(e.target.value)} placeholder="例如：軟膠囊" />
         <label style={styles.label}>購買通路（選填）</label>
         <input style={styles.input} value={channel} onChange={(e) => setChannel(e.target.value)} placeholder="例如：iHerb" />
+        <label style={styles.label}>通路網址（選填）</label>
+        <input style={styles.input} value={channelUrl} onChange={(e) => setChannelUrl(e.target.value)} placeholder="https://www.iherb.com" />
         <label style={styles.label}>標籤（選填，用逗號分隔）</label>
         <input style={styles.input} value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} placeholder="例如：魚油, 維生素, 複方" />
         <label style={styles.label}>推薦者（選填）</label>
