@@ -691,9 +691,10 @@ function MineView({ mySupplements, onAdd, onRemove, onEdit }) {
 
       {mySupplements.length > 1 && (
         <div style={styles.sortRow}>
-          <span style={styles.sortLabel}>排序：</span>
-          <button onClick={() => setSortMode("recent")} style={{ ...styles.filterChip, ...(sortMode === "recent" ? styles.filterChipActive : {}) }}>新增順序</button>
-          <button onClick={() => setSortMode("name")} style={{ ...styles.filterChip, ...(sortMode === "name" ? styles.filterChipActive : {}) }}>名稱（A→Z／筆畫少→多）</button>
+          <select value={sortMode} onChange={(e) => setSortMode(e.target.value)} style={styles.sortSelect}>
+            <option value="recent">排序：新增順序</option>
+            <option value="name">排序：名稱（A→Z／筆畫少→多）</option>
+          </select>
         </div>
       )}
 
@@ -826,11 +827,10 @@ function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggle
             ))}
           </div>
         ) : <div />}
-        <div style={styles.sortGroup}>
-          <span style={styles.sortLabel}>排序：</span>
-          <button onClick={() => setSortMode("recent")} style={{ ...styles.filterChip, ...(sortMode === "recent" ? styles.filterChipActive : {}) }}>最新登錄</button>
-          <button onClick={() => setSortMode("name")} style={{ ...styles.filterChip, ...(sortMode === "name" ? styles.filterChipActive : {}) }}>名稱（A→Z／筆畫少→多）</button>
-        </div>
+        <select value={sortMode} onChange={(e) => setSortMode(e.target.value)} style={styles.sortSelect}>
+          <option value="recent">排序：最新登錄</option>
+          <option value="name">排序：名稱（A→Z／筆畫少→多）</option>
+        </select>
       </div>
 
       {productLibrary.length === 0 && <EmptyState text="還沒有任何人登錄備品。登入後點「登錄備品」記錄品牌、名稱、成分、購買連結與每日用量，缺貨時大家都能快速挑選替代品。" />}
@@ -1265,9 +1265,13 @@ const styles = {
   filterRow: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 },
   filterRowInline: { display: "flex", gap: 6, flexWrap: "wrap" },
   toolbarRow: { display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 14 },
-  sortRow: { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 12 },
+  sortRow: { display: "flex", justifyContent: "flex-end", marginBottom: 12 },
   sortGroup: { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginLeft: "auto" },
   sortLabel: { fontSize: 15, color: C.muted, fontWeight: 600 },
+  sortSelect: {
+    fontSize: 14, fontWeight: 600, color: C.ink, background: C.card, border: `1px solid ${C.line}`,
+    borderRadius: 20, padding: "8px 14px", cursor: "pointer", flexShrink: 0,
+  },
   filterChip: { fontSize: 18.5, background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "6px 12px", color: C.muted, cursor: "pointer", fontWeight: 600 },
   filterChipActive: { background: C.ink, color: "#fff", borderColor: C.ink },
   nutrientCard: { background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 },
