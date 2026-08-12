@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>保健品管理系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700;900&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.6; }
+</style>
+</head>
+<body>
+<div id="root">
+  <div style="font-family: sans-serif; padding: 40px; color: #8A8578; text-align: center;">載入中…如果這段文字沒有消失，代表 JavaScript 未能載入，請檢查網路連線或瀏覽器主控台錯誤訊息。</div>
+</div>
+<script>
+  window.addEventListener("error", function (e) {
+    var root = document.getElementById("root");
+    if (root) {
+      root.innerHTML = '<div style="font-family: monospace; padding: 24px; color: #B25A3C; white-space: pre-wrap;">發生錯誤，無法載入頁面：\n' + (e.message || e) + '</div>';
+    }
+  });
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.16.0/firebase-app-compat.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.16.0/firebase-auth-compat.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.16.0/firebase-firestore-compat.min.js" crossorigin></script>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo } = React;
+
+/* =========================================================
+   ⚠️ 請填入你自己 Firebase 專案的設定值（Firebase 主控台 →
+   專案設定 → 一般 → 你的應用程式 → SDK 設定）
+   ========================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyAOAZlXfBxn7JPFid1SgLdlTG9XDM25fH0",
+  authDomain: "supplement-3ebd9.firebaseapp.com",
+  projectId: "supplement-3ebd9",
+  storageBucket: "supplement-3ebd9.firebasestorage.app",
+  messagingSenderId: "355584502063",
+  appId: "1:355584502063:web:a2ceb499912a40d9d199da",
+};
+
+let fb = null, auth = null, db = null, fbReady = false, fbError = "";
+try {
+  if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY") {
+    fb = firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db = firebase.firestore();
+    fbReady = true;
+  } else {
+    fbError = "尚未設定 Firebase 專案金鑰，請參考檔案開頭註解填入 firebaseConfig。";
+  }
+} catch (e) {
+  fbError = "Firebase 初始化失敗：" + e.message;
+}
+
+/* =========================================================
+   簡易圖示（純 SVG，無外部套件依賴）
+   ========================================================= */
+const Icon = ({ children, size = 18, color = "currentColor", strokeWidth = 2 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+       strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">{children}</svg>
+);
+const IPlus = (p) => <Icon {...p}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></Icon>;
+const ITrash = (p) => <Icon {...p}><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></Icon>;
+const ICheck = (p) => <Icon {...p}><polyline points="20 6 9 17 4 12"/></Icon>;
+const IAlert = (p) => <Icon {...p}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></Icon>;
+const ISparkle = (p) => <Icon {...p}><path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6L12 3z"/></Icon>;
+const IPill = (p) => <Icon {...p}><path d="M10.5 20.5L3.5 13.5a5 5 0 1 1 7-7l7 7a5 5 0 1 1-7 7z"/><line x1="8.5" y1="8.5" x2="15.5" y2="15.5"/></Icon>;
+const ICalendar = (p) => <Icon {...p}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></Icon>;
+const IBook = (p) => <Icon {...p}><path d="M2 4.5C2 3.7 2.7 3 3.5 3H10a3 3 0 0 1 3 3v15a2.5 2.5 0 0 0-2.5-2.5H2z"/><path d="M22 4.5c0-.8-.7-1.5-1.5-1.5H14a3 3 0 0 0-3 3v15A2.5 2.5 0 0 1 13.5 18.5H22z"/></Icon>;
+const IX = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></Icon>;
+const ISun = (p) => <Icon {...p}><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/></Icon>;
+const ISunset = (p) => <Icon {...p}><path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="9" x2="12" y2="2"/><line x1="4.2" y1="10.2" x2="5.6" y2="11.6"/><line x1="18.4" y1="11.6" x2="19.8" y2="10.2"/><line x1="1" y1="18" x2="23" y2="18"/><polyline points="8 6 12 2 16 6"/></Icon>;
+const IMoon = (p) => <Icon {...p}><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></Icon>;
+const ICloudSun = (p) => <Icon {...p}><path d="M6 15.5a4.5 4.5 0 1 1 8.9-1H15a3.5 3.5 0 0 1 0 7H6.5A3.5 3.5 0 0 1 6 15.5z"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="4.2" y1="4.8" x2="5.6" y2="6.2"/><line x1="2" y1="10" x2="4" y2="10"/></Icon>;
+const IExternal = (p) => <Icon {...p}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></Icon>;
+const IPackage = (p) => <Icon {...p}><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.3" y1="15.3" x2="21" y2="21"/></Icon>;
+const IImageOff = (p) => <Icon {...p}><path d="M4 4l16 16"/><path d="M21 15V6a2 2 0 0 0-2-2H8"/><path d="M3 8v10a2 2 0 0 0 2 2h10"/><circle cx="8.5" cy="8.5" r="1.5"/></Icon>;
+const IListChecks = (p) => <Icon {...p}><polyline points="3 6 4.5 7.5 7 5"/><polyline points="3 13 4.5 14.5 7 12"/><line x1="11" y1="6" x2="21" y2="6"/><line x1="11" y1="13" x2="21" y2="13"/><line x1="11" y1="20" x2="21" y2="20"/><line x1="3" y1="20" x2="7" y2="20"/></Icon>;
+const ILock = (p) => <Icon {...p}><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></Icon>;
+const ILogOut = (p) => <Icon {...p}><path d="M9 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></Icon>;
+
+/* =========================================================
+   靜態資料庫：成分
+   ========================================================= */
+const NUTRIENT_DB = [
+  { id: "vitd", name: "維生素D", category: "維生素", func: "促進鈣吸收、支持骨骼與免疫系統", rda: "10–20 mcg (400–800 IU)", ul: "100 mcg (4000 IU)", unit: "mcg" },
+  { id: "vita", name: "維生素A", category: "維生素", func: "視力健康、皮膚黏膜修復、免疫功能", rda: "700–900 mcg RAE", ul: "3000 mcg RAE", unit: "mcg" },
+  { id: "vitb1", name: "維生素B1（硫胺素）", category: "維生素", func: "醣類代謝、神經傳導功能", rda: "1.1–1.2 mg", ul: "無明確上限", unit: "mg" },
+  { id: "vitb2", name: "維生素B2（核黃素）", category: "維生素", func: "能量代謝、皮膚與眼睛健康", rda: "1.1–1.3 mg", ul: "無明確上限", unit: "mg" },
+  { id: "vitb6", name: "維生素B6", category: "維生素", func: "胺基酸代謝、神經傳導物質合成", rda: "1.3–1.7 mg", ul: "100 mg", unit: "mg" },
+  { id: "vitb12", name: "維生素B12", category: "維生素", func: "紅血球生成、神經系統維護", rda: "2.4 mcg", ul: "無明確上限", unit: "mcg" },
+  { id: "folate", name: "葉酸", category: "維生素", func: "細胞分裂與DNA合成，孕期尤其重要", rda: "400 mcg", ul: "1000 mcg", unit: "mcg" },
+  { id: "bcomplex", name: "維生素B群", category: "維生素", func: "能量代謝、神經功能、紅血球生成（綜合型）", rda: "依各B維生素而異", ul: "依各B維生素而異", unit: "mg" },
+  { id: "vitc", name: "維生素C", category: "維生素", func: "抗氧化、膠原蛋白合成、增加鐵吸收", rda: "75–90 mg", ul: "2000 mg", unit: "mg" },
+  { id: "vitamin_e", name: "維生素E", category: "維生素", func: "脂溶性抗氧化劑、保護細胞膜", rda: "15 mg", ul: "1000 mg", unit: "mg" },
+  { id: "calcium", name: "鈣", category: "礦物質", func: "維持骨骼與牙齒健康、神經傳導、肌肉收縮", rda: "1000–1200 mg", ul: "2500 mg", unit: "mg" },
+  { id: "magnesium", name: "鎂", category: "礦物質", func: "肌肉放鬆、神經穩定、能量代謝、睡眠品質", rda: "310–420 mg", ul: "350 mg（補充劑上限）", unit: "mg" },
+  { id: "zinc", name: "鋅", category: "礦物質", func: "免疫功能、傷口癒合、味覺嗅覺", rda: "8–11 mg", ul: "40 mg", unit: "mg" },
+  { id: "iron", name: "鐵", category: "礦物質", func: "血紅素合成、氧氣運輸、預防貧血", rda: "8–18 mg", ul: "45 mg", unit: "mg" },
+  { id: "copper", name: "銅", category: "礦物質", func: "鐵代謝、結締組織合成、抗氧化酵素輔因子", rda: "0.9 mg", ul: "10 mg", unit: "mg" },
+  { id: "selenium", name: "硒", category: "礦物質", func: "抗氧化酵素成分、甲狀腺荷爾蒙代謝", rda: "55 mcg", ul: "400 mcg", unit: "mcg" },
+  { id: "iodine", name: "碘", category: "礦物質", func: "甲狀腺荷爾蒙合成、代謝調節", rda: "150 mcg", ul: "1100 mcg", unit: "mcg" },
+  { id: "chromium", name: "鉻", category: "礦物質", func: "協助胰島素作用、醣類與脂質代謝", rda: "25–35 mcg", ul: "無明確上限", unit: "mcg" },
+  { id: "manganese", name: "錳", category: "礦物質", func: "骨骼形成、抗氧化酵素輔因子", rda: "1.8–2.3 mg", ul: "11 mg", unit: "mg" },
+  { id: "potassium", name: "鉀", category: "礦物質", func: "體液平衡、神經與肌肉功能、血壓調節", rda: "2600–3400 mg", ul: "無明確上限（腎功能不佳者需留意）", unit: "mg" },
+  { id: "omega3", name: "Omega-3 魚油", category: "脂肪酸", func: "心血管健康、抗發炎、腦部與視力發育", rda: "250–500 mg (EPA+DHA)", ul: "一般建議 <3000 mg", unit: "mg" },
+  { id: "probiotic", name: "益生菌", category: "菌種", func: "腸道菌相平衡、消化與部分免疫調節", rda: "10–100 億 CFU", ul: "無明確上限", unit: "億CFU" },
+  { id: "coq10", name: "輔酶Q10", category: "類輔酶", func: "細胞能量產生、抗氧化，常與心血管保健併用", rda: "30–200 mg", ul: "一般建議 <1200 mg", unit: "mg" },
+  { id: "collagen", name: "膠原蛋白", category: "蛋白質", func: "皮膚彈性、關節與結締組織支持", rda: "2500–10000 mg", ul: "無明確上限", unit: "mg" },
+  { id: "whey", name: "乳清蛋白", category: "蛋白質", func: "肌肉修復與生長、日常蛋白質補充", rda: "20–30 g／次", ul: "依個人總蛋白需求而定", unit: "g" },
+  { id: "creatine", name: "肌酸", category: "運動營養", func: "增加高強度運動表現、肌肉能量供應", rda: "3–5 g", ul: "一般建議 <5 g／日長期使用", unit: "g" },
+  { id: "lutein", name: "葉黃素", category: "植化素", func: "眼睛黃斑部保健、過濾藍光", rda: "6–10 mg", ul: "一般建議 <20 mg", unit: "mg" },
+  { id: "curcumin", name: "薑黃素", category: "植化素", func: "抗發炎、抗氧化，常用於關節保健", rda: "500–1000 mg", ul: "一般建議 <2000 mg", unit: "mg" },
+  { id: "cranberry", name: "蔓越莓萃取", category: "植化素", func: "泌尿道保健，抑制細菌附著尿道壁", rda: "300–500 mg", ul: "無明確上限", unit: "mg" },
+  { id: "hyaluronic", name: "玻尿酸", category: "其他", func: "皮膚保濕、關節潤滑", rda: "120–240 mg", ul: "無明確上限", unit: "mg" },
+  { id: "melatonin", name: "褪黑激素", category: "其他", func: "調節睡眠週期，助入睡", rda: "0.5–5 mg（睡前）", ul: "一般建議 <10 mg", unit: "mg" },
+  { id: "gaba", name: "GABA", category: "其他", func: "放鬆神經、幫助情緒與睡眠品質", rda: "100–300 mg", ul: "無明確上限", unit: "mg" },
+];
+const nutrientByName = (name) => NUTRIENT_DB.find((n) => n.name === name);
+
+const COMBOS_GOOD = [
+  { pair: ["維生素D", "鈣"], note: "維生素D促進鈣吸收，兩者併用效果加乘，建議隨餐服用。" },
+  { pair: ["維生素D", "鎂"], note: "鎂是維生素D代謝為活性形式的輔因子，缺鎂會降低維生素D效用。" },
+  { pair: ["維生素C", "鐵"], note: "維生素C可將非血基質鐵還原為更易吸收的形式，建議同時服用。" },
+  { pair: ["益生菌", "維生素B群"], note: "部分腸道菌可協助合成B群，腸道健康有助整體營養吸收。" },
+  { pair: ["輔酶Q10", "維生素E"], note: "兩者皆為脂溶性抗氧化物，隨油脂性餐點服用吸收較佳。" },
+  { pair: ["葉黃素", "維生素E"], note: "葉黃素為脂溶性，與脂溶性抗氧化劑併用、隨油脂餐點服用吸收較佳。" },
+];
+const COMBOS_AVOID = [
+  { pair: ["鈣", "鐵"], note: "鈣會競爭抑制鐵的吸收，建議間隔至少 2 小時分開服用。" },
+  { pair: ["鋅", "鈣"], note: "高劑量鈣可能降低鋅的吸收率，長期併服建議分開時段。" },
+  { pair: ["鋅", "銅"], note: "長期高劑量補鋅會抑制銅吸收，可能導致銅缺乏。" },
+  { pair: ["維生素E", "Omega-3 魚油"], note: "兩者皆有輕微抗凝血作用，若同時使用抗凝血藥物需諮詢醫師。" },
+  { pair: ["鈣", "鎂"], note: "兩者共用同一吸收路徑，高劑量併服會互相競爭，建議分開時段或選比例配方。" },
+];
+
+const UNIT_OPTIONS = ["mg", "mcg", "g", "IU", "ml", "億CFU", "顆", "錠", "包", "%DV"];
+
+const TIME_SLOTS = [
+  { id: "morning", label: "早上", Icon: ISun },
+  { id: "noon", label: "中午", Icon: ICloudSun },
+  { id: "evening", label: "晚上", Icon: ISunset },
+  { id: "bedtime", label: "睡前", Icon: IMoon },
+];
+
+const todayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+const uid = () => Math.random().toString(36).slice(2, 10);
+
+/* =========================================================
+   登入畫面 / 尚未設定 Firebase 的提示
+   ========================================================= */
+function LoginGate({ reason }) {
+  return (
+    <div style={styles.gateBox}>
+      <ILock size={20} color={C.muted} />
+      <p style={styles.gateText}>{reason || "登入後才能使用這項功能。"}</p>
+    </div>
+  );
+}
+
+function App() {
+  const [tab, setTab] = useState("reference");
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  const [mySupplements, setMySupplements] = useState([]);
+  const [productLibrary, setProductLibrary] = useState([]);
+  const [checkLog, setCheckLog] = useState({});
+  const [showAddMine, setShowAddMine] = useState(false);
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [nutrientFilter, setNutrientFilter] = useState("全部");
+  const [selectedDate, setSelectedDate] = useState(todayKey());
+  const [compareIds, setCompareIds] = useState([]);
+
+  // 監聽登入狀態
+  useEffect(() => {
+    if (!fbReady) { setAuthLoading(false); return; }
+    const unsub = auth.onAuthStateChanged((u) => { setUser(u); setAuthLoading(false); });
+    return unsub;
+  }, []);
+
+  // 公用備品庫（不論是否登入都可讀取）
+  useEffect(() => {
+    if (!fbReady) return;
+    const unsub = db.collection("productLibrary").orderBy("createdAt", "desc").onSnapshot((snap) => {
+      setProductLibrary(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    }, (err) => console.error("productLibrary listen error", err));
+    return unsub;
+  }, []);
+
+  // 個人資料（登入才讀取）
+  useEffect(() => {
+    if (!fbReady || !user) { setMySupplements([]); setCheckLog({}); return; }
+    const unsub1 = db.collection("users").doc(user.uid).collection("supplements").onSnapshot((snap) => {
+      setMySupplements(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+    const unsub2 = db.collection("users").doc(user.uid).collection("checklog").onSnapshot((snap) => {
+      const next = {};
+      snap.docs.forEach((d) => { next[d.id] = d.data(); });
+      setCheckLog(next);
+    });
+    return () => { unsub1(); unsub2(); };
+  }, [user]);
+
+  // 登出後若停留在需要登入的頁籤，導回「建議用量」
+  useEffect(() => {
+    if (!user && (tab === "checklist" || tab === "mine")) setTab("reference");
+  }, [user]);
+
+  const signIn = () => {
+    if (!fbReady) return;
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider).catch((e) => alert("登入失敗：" + e.message));
+  };
+  const signOut = () => auth.signOut();
+
+  const toggleCheck = (dateKey, entryId) => {
+    if (!user) return;
+    const current = checkLog[dateKey] || {};
+    const next = { ...current, [entryId]: !current[entryId] };
+    setCheckLog((prev) => ({ ...prev, [dateKey]: next }));
+    db.collection("users").doc(user.uid).collection("checklog").doc(dateKey).set(next).catch((e) => console.error(e));
+  };
+
+  const addSupplement = (item) => {
+    if (!user) return;
+    db.collection("users").doc(user.uid).collection("supplements").add({ ...item, createdAt: firebase.firestore.FieldValue.serverTimestamp() })
+      .then(() => setShowAddMine(false)).catch((e) => alert("新增失敗：" + e.message));
+  };
+  const removeSupplement = (id) => {
+    if (!user) return;
+    db.collection("users").doc(user.uid).collection("supplements").doc(id).delete().catch((e) => alert("刪除失敗：" + e.message));
+  };
+
+  const addProduct = (item) => {
+    if (!user) return;
+    db.collection("productLibrary").add({ ...item, ownerUid: user.uid, ownerName: user.displayName || "匿名使用者", createdAt: firebase.firestore.FieldValue.serverTimestamp() })
+      .then(() => setShowAddProduct(false)).catch((e) => alert("登錄失敗：" + e.message));
+  };
+  const removeProduct = (id, ownerUid) => {
+    if (!user || user.uid !== ownerUid) { alert("只有登錄者本人可以刪除這筆備品。"); return; }
+    db.collection("productLibrary").doc(id).delete().catch((e) => alert("刪除失敗：" + e.message));
+    setCompareIds((prev) => prev.filter((x) => x !== id));
+  };
+  const toggleCompare = (id) => setCompareIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const filteredNutrients = useMemo(() => (nutrientFilter === "全部" ? NUTRIENT_DB : NUTRIENT_DB.filter((n) => n.category === nutrientFilter)), [nutrientFilter]);
+  const categories = ["全部", ...Array.from(new Set(NUTRIENT_DB.map((n) => n.category)))];
+
+  const dayEntries = useMemo(() => {
+    const entries = [];
+    mySupplements.forEach((s) => (s.times || []).forEach((t) => entries.push({ entryId: `${s.id}__${t}`, supplement: s, time: t })));
+    return entries;
+  }, [mySupplements]);
+  const dayLog = checkLog[selectedDate] || {};
+  const takenCount = dayEntries.filter((e) => dayLog[e.entryId]).length;
+  const totalCount = dayEntries.length;
+
+  return (
+    <div style={styles.app}>
+      <header style={styles.header}>
+        <div style={styles.headerTopRow}>
+          <div style={styles.headerTop}><IPill size={22} color={C.amber} strokeWidth={2.2} /><span style={styles.brandMark}>保健台帳</span></div>
+          <AuthWidget user={user} authLoading={authLoading} fbReady={fbReady} onSignIn={signIn} onSignOut={signOut} />
+        </div>
+        <h1 style={styles.title}>保健品管理系統</h1>
+        <p style={styles.subtitle}>每日服用 · 我的保健品 · 建議用量 · 備品選擇</p>
+        {!fbReady && <p style={styles.fbWarning}>{fbError}（目前以離線示範模式運作，登入與雲端同步功能無法使用）</p>}
+      </header>
+
+      <nav style={styles.tabbar}>
+        <TabButton Icon={ICalendar} label="每日服用" active={tab === "checklist"} onClick={() => setTab("checklist")} locked={!user} />
+        <TabButton Icon={IPill} label="我的保健品" active={tab === "mine"} onClick={() => setTab("mine")} locked={!user} />
+        <TabButton Icon={IBook} label="建議用量" active={tab === "reference"} onClick={() => setTab("reference")} />
+        <TabButton Icon={IPackage} label="備品選擇" active={tab === "library"} onClick={() => setTab("library")} />
+      </nav>
+
+      <main style={styles.main}>
+        {tab === "checklist" && (
+          user ? (
+            <ChecklistView selectedDate={selectedDate} setSelectedDate={setSelectedDate} dayEntries={dayEntries} dayLog={dayLog} toggleCheck={toggleCheck} takenCount={takenCount} totalCount={totalCount} />
+          ) : <LoginGate reason="登入 Google 帳號後，即可查看並勾選你的每日服用排程。" />
+        )}
+        {tab === "mine" && (
+          user ? <MineView mySupplements={mySupplements} onAdd={() => setShowAddMine(true)} onRemove={removeSupplement} />
+               : <LoginGate reason="登入 Google 帳號後，即可管理你自己的保健品清單。" />
+        )}
+        {tab === "reference" && <ReferenceView categories={categories} filter={nutrientFilter} setFilter={setNutrientFilter} list={filteredNutrients} />}
+        {tab === "library" && (
+          <LibraryView
+            productLibrary={productLibrary} mySupplements={mySupplements} compareIds={compareIds} user={user}
+            onToggleCompare={toggleCompare}
+            onAddProduct={() => (user ? setShowAddProduct(true) : signIn())}
+            onRemoveProduct={removeProduct}
+            onAddToMine={(product) => {
+              if (!user) { signIn(); return; }
+              addSupplement({
+                name: `${product.brand ? product.brand + "｜" : ""}${product.name}`,
+                dose: product.dailyDose || "—", times: [], note: product.note || "",
+                ingredients: product.ingredients || [], image: product.image || "", link: product.link || "", sourceProductId: product.id,
+              });
+              setTab("mine");
+            }}
+          />
+        )}
+      </main>
+
+      {showAddMine && <AddToMineModal onClose={() => setShowAddMine(false)} onAdd={addSupplement} productLibrary={productLibrary} />}
+      {showAddProduct && <AddProductModal onClose={() => setShowAddProduct(false)} onAdd={addProduct} />}
+    </div>
+  );
+}
+
+function AuthWidget({ user, authLoading, fbReady, onSignIn, onSignOut }) {
+  if (!fbReady) return null;
+  if (authLoading) return <span style={styles.authLoading}>…</span>;
+  if (user) {
+    return (
+      <div style={styles.authBox}>
+        <span style={styles.authName}>{user.displayName || user.email}</span>
+        <button onClick={onSignOut} style={styles.authBtnGhost}><ILogOut size={14} /> 登出</button>
+      </div>
+    );
+  }
+  return <button onClick={onSignIn} style={styles.authBtnSolid}>使用 Google 登入</button>;
+}
+
+function TabButton({ Icon, label, active, onClick, locked }) {
+  return (
+    <button onClick={onClick} style={{ ...styles.tabBtn, ...(active ? styles.tabBtnActive : {}) }}>
+      <Icon size={16} strokeWidth={2.2} color={active ? C.ink : C.muted} />
+      <span style={{ display: "flex", alignItems: "center", gap: 3, color: active ? C.ink : C.muted, fontWeight: active ? 700 : 500 }}>
+        {label}{locked && <ILock size={10} color={C.muted} />}
+      </span>
+      {active && <div style={styles.tabUnderline} />}
+    </button>
+  );
+}
+function EmptyState({ text }) {
+  return (<div style={styles.emptyState}><IPill size={22} color={C.line} /><p style={styles.emptyText}>{text}</p></div>);
+}
+
+function ChecklistView({ selectedDate, setSelectedDate, dayEntries, dayLog, toggleCheck, takenCount, totalCount }) {
+  const pct = totalCount ? Math.round((takenCount / totalCount) * 100) : 0;
+  const grouped = TIME_SLOTS.map((slot) => ({ slot, entries: dayEntries.filter((e) => e.time === slot.id) })).filter((g) => g.entries.length > 0);
+  return (
+    <div>
+      <div style={styles.dateRow}>
+        <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} style={styles.dateInput} />
+        <div style={styles.progressWrap}>
+          <div style={styles.progressTrack}><div style={{ ...styles.progressFill, width: `${pct}%` }} /></div>
+          <span style={styles.progressLabel}>{takenCount}/{totalCount} 已服用</span>
+        </div>
+      </div>
+      {dayEntries.length === 0 && <EmptyState text="尚未安排任何保健品排程。到「我的保健品」加入項目並設定服用時段，就會在這裡出現每日勾選清單。" />}
+      {grouped.map(({ slot, entries }) => (
+        <section key={slot.id} style={styles.slotSection}>
+          <div style={styles.slotHeader}>
+            <slot.Icon size={16} color={C.amber} />
+            <span style={styles.slotTitle}>{slot.label}</span>
+            <span style={styles.slotCount}>{entries.filter((e) => dayLog[e.entryId]).length}/{entries.length}</span>
+          </div>
+          <div style={styles.pillRow}>
+            {entries.map((e) => {
+              const checked = !!dayLog[e.entryId];
+              return (
+                <button key={e.entryId} onClick={() => toggleCheck(selectedDate, e.entryId)} style={{ ...styles.pillBlister, ...(checked ? styles.pillBlisterChecked : {}) }}>
+                  <div style={{ ...styles.pillDot, ...(checked ? styles.pillDotChecked : {}) }}>{checked && <ICheck size={13} color="#fff" strokeWidth={3} />}</div>
+                  <div style={styles.pillInfo}>
+                    <span style={{ ...styles.pillName, ...(checked ? styles.pillNameChecked : {}) }}>{e.supplement.name}</span>
+                    <span style={styles.pillDose}>{e.supplement.dose}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function MineView({ mySupplements, onAdd, onRemove }) {
+  return (
+    <div>
+      <div style={styles.sectionHeadRow}>
+        <h2 style={styles.sectionHead}>我的保健品清單</h2>
+        <button onClick={onAdd} style={styles.addBtn}><IPlus size={16} strokeWidth={2.5} /> 新增</button>
+      </div>
+      {mySupplements.length === 0 && <EmptyState text="還沒有加入任何保健品。點右上角「新增」，可從備品庫或成分資料庫帶入，或手動輸入。" />}
+      <div style={styles.cardList}>
+        {mySupplements.map((s) => (
+          <div key={s.id} style={styles.supplementCard}>
+            <div style={styles.supplementCardTop}>
+              <div style={{ display: "flex", gap: 10 }}>
+                <ProductThumb src={s.image} size={40} />
+                <div><div style={styles.supplementName}>{s.name}</div><div style={styles.supplementDose}>{s.dose}</div></div>
+              </div>
+              <button onClick={() => onRemove(s.id)} style={styles.iconBtnGhost}><ITrash size={16} color={C.muted} /></button>
+            </div>
+            {s.ingredients && s.ingredients.length > 0 && (
+              <div style={styles.chipRow}>{s.ingredients.map((ing, i) => <span key={i} style={styles.ingredientChip}>{ing.name}{ing.amount ? ` · ${ing.amount}${ing.unit || ""}` : ""}</span>)}</div>
+            )}
+            <div style={styles.chipRow}>
+              {(s.times || []).map((t) => { const slot = TIME_SLOTS.find((x) => x.id === t); return <span key={t} style={styles.timeChip}>{slot ? slot.label : t}</span>; })}
+              {(!s.times || s.times.length === 0) && <span style={styles.timeChipMuted}>尚未排定服用時段</span>}
+            </div>
+            {s.note && <div style={styles.supplementNote}>{s.note}</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ReferenceView({ categories, filter, setFilter, list }) {
+  return (
+    <div>
+      <h2 style={styles.sectionHead}>成分與每日建議量</h2>
+      <div style={styles.filterRow}>
+        {categories.map((c) => (<button key={c} onClick={() => setFilter(c)} style={{ ...styles.filterChip, ...(filter === c ? styles.filterChipActive : {}) }}>{c}</button>))}
+      </div>
+      <div style={styles.cardList}>
+        {list.map((n) => (
+          <div key={n.id} style={styles.nutrientCard}>
+            <div style={styles.nutrientCardTop}><span style={styles.nutrientName}>{n.name}</span><span style={styles.nutrientCategory}>{n.category}</span></div>
+            <p style={styles.nutrientFunc}>{n.func}</p>
+            <div style={styles.rdaRow}>
+              <div style={styles.rdaBox}><span style={styles.rdaLabel}>每日建議量</span><span style={styles.rdaValue}>{n.rda}</span></div>
+              <div style={styles.rdaBox}><span style={styles.rdaLabel}>上限攝取量</span><span style={styles.rdaValueAlert}>{n.ul}</span></div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ ...styles.comboSectionHead, marginTop: 28 }}><ISparkle size={16} color={C.pine} /><span style={{ color: C.pine, fontWeight: 700 }}>建議併用</span></div>
+      <div style={styles.cardList}>
+        {COMBOS_GOOD.map((c, i) => (<div key={i} style={styles.comboCardGood}><div style={styles.comboPair}>{c.pair[0]} <span style={styles.comboPlus}>+</span> {c.pair[1]}</div><p style={styles.comboNote}>{c.note}</p></div>))}
+      </div>
+      <div style={{ ...styles.comboSectionHead, marginTop: 22 }}><IAlert size={16} color={C.rust} /><span style={{ color: C.rust, fontWeight: 700 }}>建議分開服用 / 需留意</span></div>
+      <div style={styles.cardList}>
+        {COMBOS_AVOID.map((c, i) => (<div key={i} style={styles.comboCardAvoid}><div style={styles.comboPair}>{c.pair[0]} <span style={styles.comboPlus}>+</span> {c.pair[1]}</div><p style={styles.comboNote}>{c.note}</p></div>))}
+      </div>
+      <p style={styles.disclaimer}>以上為一般性營養知識整理，僅供參考，非醫療建議。若有特定疾病、用藥或懷孕哺乳等狀況，服用前請諮詢醫師或藥師。</p>
+    </div>
+  );
+}
+
+function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggleCompare, onAddProduct, onRemoveProduct, onAddToMine }) {
+  const compareProducts = productLibrary.filter((p) => compareIds.includes(p.id));
+  return (
+    <div>
+      <div style={styles.sectionHeadRow}>
+        <h2 style={styles.sectionHead}>備品清單</h2>
+        <button onClick={onAddProduct} style={styles.addBtn}>{user ? <IPlus size={16} strokeWidth={2.5} /> : <ILock size={14} />} 登錄備品</button>
+      </div>
+      <p style={styles.helperText}>這是公用備品資料庫，所有人都能瀏覽；登入後才能新增或刪除自己登錄的項目。缺貨時可快速比較各品牌備品，勾選「加入比對」可與現有保健品進行成分用量比對。</p>
+      {productLibrary.length === 0 && <EmptyState text="還沒有任何人登錄備品。登入後點「登錄備品」記錄品牌、名稱、成分、購買連結與每日用量，缺貨時大家都能快速挑選替代品。" />}
+      <div style={styles.cardList}>
+        {productLibrary.map((p) => {
+          const inCompare = compareIds.includes(p.id);
+          const canDelete = user && user.uid === p.ownerUid;
+          return (
+            <div key={p.id} style={{ ...styles.productCard, ...(inCompare ? styles.productCardActive : {}) }}>
+              <div style={styles.productCardTop}>
+                <ProductThumb src={p.image} size={56} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {p.brand && <div style={styles.productBrand}>{p.brand}</div>}
+                  <div style={styles.productName}>{p.name}</div>
+                  {p.dailyDose && <div style={styles.supplementDose}>每日用量：{p.dailyDose}</div>}
+                  {p.ownerName && <div style={styles.productOwner}>登錄者：{p.ownerName}</div>}
+                </div>
+                {canDelete && <button onClick={() => onRemoveProduct(p.id, p.ownerUid)} style={styles.iconBtnGhost}><ITrash size={16} color={C.muted} /></button>}
+              </div>
+              {p.ingredients && p.ingredients.length > 0 && (
+                <div style={styles.chipRow}>{p.ingredients.map((ing, i) => <span key={i} style={styles.ingredientChip}>{ing.name}{ing.amount ? ` · ${ing.amount}${ing.unit || ""}` : ""}</span>)}</div>
+              )}
+              {p.note && <div style={styles.supplementNote}>{p.note}</div>}
+              <div style={styles.productActionsRow}>
+                <label style={styles.compareCheckLabel}><input type="checkbox" checked={inCompare} onChange={() => onToggleCompare(p.id)} style={styles.checkboxNative} /> 加入比對</label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {p.link && (<a href={p.link} target="_blank" rel="noopener noreferrer" style={styles.linkBtn}><IExternal size={13} /> 購買連結</a>)}
+                  <button onClick={() => onAddToMine(p)} style={styles.smallSolidBtn}>{user ? "加入我的保健品" : "登入後加入"}</button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {compareProducts.length > 0 && <ComparePanel compareProducts={compareProducts} mySupplements={mySupplements} />}
+    </div>
+  );
+}
+
+function ComparePanel({ compareProducts, mySupplements }) {
+  const sources = [
+    ...mySupplements.map((s) => ({ origin: "現有", label: s.name, ingredients: s.ingredients || [] })),
+    ...compareProducts.map((p) => ({ origin: "備品", label: `${p.brand ? p.brand + "｜" : ""}${p.name}`, ingredients: p.ingredients || [] })),
+  ];
+  const ingredientMap = {};
+  sources.forEach((src) => src.ingredients.forEach((ing) => {
+    if (!ing.name) return;
+    if (!ingredientMap[ing.name]) ingredientMap[ing.name] = [];
+    ingredientMap[ing.name].push({ origin: src.origin, label: src.label, amount: ing.amount, unit: ing.unit });
+  }));
+  const duplicates = Object.entries(ingredientMap).filter(([, arr]) => arr.length > 1);
+  const presentNames = new Set(Object.keys(ingredientMap));
+  const avoidHits = COMBOS_AVOID.filter((c) => presentNames.has(c.pair[0]) && presentNames.has(c.pair[1]));
+  const hasUnstructured = sources.some((s) => s.ingredients.length === 0);
+
+  return (
+    <div style={styles.comparePanel}>
+      <div style={styles.comboSectionHead}><IListChecks size={16} color={C.ink} /><span style={{ fontWeight: 700 }}>用量比對結果</span></div>
+      <div style={styles.chipRow}>{compareProducts.map((p) => <span key={p.id} style={styles.compareChip}>{p.brand ? `${p.brand}｜` : ""}{p.name}</span>)}</div>
+      {duplicates.length === 0 && avoidHits.length === 0 && (<div style={styles.compareOkBox}>目前勾選的備品與現有保健品之間，未偵測到重複成分或建議分開服用的組合。</div>)}
+      {duplicates.length > 0 && (
+        <div style={{ marginTop: 14 }}>
+          <div style={styles.compareSubhead}><IAlert size={14} color={C.rust} /> 重複成分，請留意加總劑量</div>
+          {duplicates.map(([name, arr]) => {
+            const ref = nutrientByName(name);
+            return (
+              <div key={name} style={styles.duplicateCard}>
+                <div style={styles.comboPair}>{name}</div>
+                <div style={styles.duplicateSources}>{arr.map((a, i) => <span key={i} style={styles.duplicateSourceTag}>{a.origin}：{a.label}{a.amount ? `（${a.amount}${a.unit || ""}）` : ""}</span>)}</div>
+                {ref && (<div style={styles.rdaRow}><div style={styles.rdaBox}><span style={styles.rdaLabel}>每日建議量</span><span style={styles.rdaValue}>{ref.rda}</span></div><div style={styles.rdaBox}><span style={styles.rdaLabel}>上限攝取量</span><span style={styles.rdaValueAlert}>{ref.ul}</span></div></div>)}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {avoidHits.length > 0 && (
+        <div style={{ marginTop: 14 }}>
+          <div style={styles.compareSubhead}><IAlert size={14} color={C.rust} /> 建議分開服用的組合</div>
+          {avoidHits.map((c, i) => (<div key={i} style={styles.comboCardAvoid}><div style={styles.comboPair}>{c.pair[0]} <span style={styles.comboPlus}>+</span> {c.pair[1]}</div><p style={styles.comboNote}>{c.note}</p></div>))}
+        </div>
+      )}
+      {hasUnstructured && <p style={styles.disclaimerSmall}>部分項目未登錄詳細成分，比對結果可能不完整，建議補齊成分資訊以取得更準確的比對。</p>}
+    </div>
+  );
+}
+
+function ProductThumb({ src, size = 48 }) {
+  const [broken, setBroken] = useState(false);
+  if (!src || broken) return (<div style={{ ...styles.thumbPlaceholder, width: size, height: size }}><IImageOff size={Math.round(size * 0.4)} color={C.line} /></div>);
+  return <img src={src} onError={() => setBroken(true)} style={{ ...styles.thumbImg, width: size, height: size }} alt="" />;
+}
+
+function IngredientEditor({ ingredients, onChange }) {
+  const update = (i, field, value) => onChange(ingredients.map((ing, idx) => {
+    if (idx !== i) return ing;
+    const next = { ...ing, [field]: value };
+    if (field === "name") {
+      const match = nutrientByName(value);
+      if (match && !ing.unit) next.unit = match.unit;
+    }
+    return next;
+  }));
+  const addRow = () => onChange([...ingredients, { name: "", amount: "", unit: "mg" }]);
+  const removeRow = (i) => onChange(ingredients.filter((_, idx) => idx !== i));
+
+  return (
+    <div>
+      <datalist id="nutrient-name-list">{NUTRIENT_DB.map((n) => <option key={n.id} value={n.name} />)}</datalist>
+      {ingredients.map((ing, i) => (
+        <div key={i} style={styles.ingredientRow}>
+          <input style={{ ...styles.input, flex: 2, marginTop: 0 }} value={ing.name} onChange={(e) => update(i, "name", e.target.value)} placeholder="成分名稱" list="nutrient-name-list" />
+          <input style={{ ...styles.input, flex: 1, marginTop: 0 }} value={ing.amount} onChange={(e) => update(i, "amount", e.target.value)} placeholder="數量" inputMode="decimal" />
+          <select style={{ ...styles.input, flex: 1, marginTop: 0, paddingRight: 4 }} value={ing.unit || "mg"} onChange={(e) => update(i, "unit", e.target.value)}>
+            {UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
+          </select>
+          {ingredients.length > 1 && (<button type="button" onClick={() => removeRow(i)} style={styles.iconBtnGhost}><IX size={16} color={C.muted} /></button>)}
+        </div>
+      ))}
+      <button type="button" onClick={addRow} style={styles.addIngredientBtn}><IPlus size={13} /> 新增成分</button>
+    </div>
+  );
+}
+
+function AddToMineModal({ onClose, onAdd, productLibrary }) {
+  const [name, setName] = useState("");
+  const [dose, setDose] = useState("");
+  const [times, setTimes] = useState([]);
+  const [note, setNote] = useState("");
+  const [ingredients, setIngredients] = useState([{ name: "", amount: "", unit: "mg" }]);
+  const [image, setImage] = useState("");
+  const [pick, setPick] = useState("");
+
+  const toggleTime = (id) => setTimes((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
+
+  const handlePick = (value) => {
+    setPick(value);
+    if (!value) return;
+    const [kind, id] = value.split(":");
+    if (kind === "lib") {
+      const p = productLibrary.find((x) => x.id === id);
+      if (p) { setName(`${p.brand ? p.brand + "｜" : ""}${p.name}`); setDose(p.dailyDose || ""); setNote(p.note || ""); setIngredients(p.ingredients && p.ingredients.length ? p.ingredients : [{ name: "", amount: "", unit: "mg" }]); setImage(p.image || ""); }
+    } else if (kind === "db") {
+      const n = NUTRIENT_DB.find((x) => x.id === id);
+      if (n) { setName(n.name); setDose(n.rda); setIngredients([{ name: n.name, amount: "", unit: n.unit }]); setImage(""); }
+    }
+  };
+
+  const handleSubmit = () => {
+    if (!name.trim() || times.length === 0) return;
+    onAdd({ name: name.trim(), dose: dose.trim() || "—", times, note: note.trim(), ingredients: ingredients.filter((i) => i.name.trim()), image });
+  };
+
+  return (
+    <div style={styles.modalOverlay} onClick={onClose}>
+      <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+        <div style={styles.modalHeader}><span style={styles.modalTitle}>新增到我的保健品</span><button onClick={onClose} style={styles.iconBtnGhost}><IX size={18} color={C.muted} /></button></div>
+        <label style={styles.label}>從備品庫或成分資料庫帶入（選填）</label>
+        <select value={pick} onChange={(e) => handlePick(e.target.value)} style={styles.input}>
+          <option value="">— 手動輸入 —</option>
+          {productLibrary.length > 0 && (<optgroup label="備品庫">{productLibrary.map((p) => <option key={p.id} value={`lib:${p.id}`}>{p.brand ? `${p.brand}｜` : ""}{p.name}</option>)}</optgroup>)}
+          <optgroup label="成分資料庫">{NUTRIENT_DB.map((n) => <option key={n.id} value={`db:${n.id}`}>{n.name}</option>)}</optgroup>
+        </select>
+        <label style={styles.label}>品名</label>
+        <input style={styles.input} value={name} onChange={(e) => setName(e.target.value)} placeholder="例如：維生素D3 2000IU" />
+        <label style={styles.label}>劑量 / 用法</label>
+        <input style={styles.input} value={dose} onChange={(e) => setDose(e.target.value)} placeholder="例如：1顆" />
+        <label style={styles.label}>成分（選填）</label>
+        <IngredientEditor ingredients={ingredients} onChange={setIngredients} />
+        <label style={styles.label}>服用時段</label>
+        <div style={styles.chipRow}>
+          {TIME_SLOTS.map((t) => (<button key={t.id} type="button" onClick={() => toggleTime(t.id)} style={{ ...styles.timeChipSelectable, ...(times.includes(t.id) ? styles.timeChipSelected : {}) }}>{t.label}</button>))}
+        </div>
+        <label style={styles.label}>備註（選填）</label>
+        <input style={styles.input} value={note} onChange={(e) => setNote(e.target.value)} placeholder="例如：隨餐服用" />
+        <button onClick={handleSubmit} style={styles.submitBtn} disabled={!name.trim() || times.length === 0}>加入清單</button>
+      </div>
+    </div>
+  );
+}
+
+function AddProductModal({ onClose, onAdd }) {
+  const [brand, setBrand] = useState("");
+  const [name, setName] = useState("");
+  const [image, setImage] = useState("");
+  const [link, setLink] = useState("");
+  const [dailyDose, setDailyDose] = useState("");
+  const [note, setNote] = useState("");
+  const [ingredients, setIngredients] = useState([{ name: "", amount: "", unit: "mg" }]);
+
+  const handleSubmit = () => {
+    if (!name.trim()) return;
+    onAdd({
+      brand: brand.trim(), name: name.trim(), image: image.trim(), link: link.trim(),
+      dailyDose: dailyDose.trim(), note: note.trim(),
+      ingredients: ingredients.filter((ing) => ing.name.trim()).map((ing) => ({ name: ing.name.trim(), amount: ing.amount.trim(), unit: ing.unit })),
+    });
+  };
+
+  return (
+    <div style={styles.modalOverlay} onClick={onClose}>
+      <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+        <div style={styles.modalHeader}><span style={styles.modalTitle}>登錄備品（公開）</span><button onClick={onClose} style={styles.iconBtnGhost}><IX size={18} color={C.muted} /></button></div>
+        <p style={styles.helperText}>登錄後所有使用者都看得到這筆備品，只有你自己能刪除。</p>
+        <label style={styles.label}>品牌</label>
+        <input style={styles.input} value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="例如：GNC" />
+        <label style={styles.label}>名稱</label>
+        <input style={styles.input} value={name} onChange={(e) => setName(e.target.value)} placeholder="例如：維生素D3 軟膠囊" />
+        <label style={styles.label}>圖片連結（選填）</label>
+        <input style={styles.input} value={image} onChange={(e) => setImage(e.target.value)} placeholder="https://..." />
+        <label style={styles.label}>成分（含數量與單位）</label>
+        <IngredientEditor ingredients={ingredients} onChange={setIngredients} />
+        <label style={styles.label}>每日用量</label>
+        <input style={styles.input} value={dailyDose} onChange={(e) => setDailyDose(e.target.value)} placeholder="例如：每日1顆，隨餐服用" />
+        <label style={styles.label}>購買連結（選填）</label>
+        <input style={styles.input} value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://..." />
+        <label style={styles.label}>備註建議（選填）</label>
+        <input style={styles.input} value={note} onChange={(e) => setNote(e.target.value)} placeholder="例如：適合缺貨時替代同成分產品" />
+        <button onClick={handleSubmit} style={styles.submitBtn} disabled={!name.trim()}>登錄備品</button>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   設計系統
+   ========================================================= */
+const C = { paper: "#F5F3EC", ink: "#20342C", pine: "#3D6152", amber: "#C08A34", rust: "#B25A3C", muted: "#8A8578", line: "#D9D3C3", card: "#FFFFFF", goodBg: "#EEF3EC", avoidBg: "#FBEFE9" };
+
+const styles = {
+  app: { fontFamily: "'Noto Sans TC', sans-serif", background: C.paper, minHeight: "100vh", color: C.ink, paddingBottom: 40 },
+  header: { padding: "20px 20px 16px", borderBottom: `1px solid ${C.line}` },
+  headerTopRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
+  headerTop: { display: "flex", alignItems: "center", gap: 6 },
+  brandMark: { fontFamily: "'JetBrains Mono', monospace", fontSize: 12, letterSpacing: "0.12em", color: C.amber, fontWeight: 600 },
+  title: { fontFamily: "'Noto Serif TC', serif", fontWeight: 900, fontSize: 26, margin: 0, letterSpacing: "0.02em" },
+  subtitle: { margin: "6px 0 0", fontSize: 13, color: C.muted },
+  fbWarning: { margin: "10px 0 0", fontSize: 11.5, color: C.rust, background: C.avoidBg, padding: "8px 10px", borderRadius: 8, lineHeight: 1.5 },
+  authBox: { display: "flex", alignItems: "center", gap: 8 },
+  authName: { fontSize: 12, color: C.ink, fontWeight: 600, maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  authBtnGhost: { display: "flex", alignItems: "center", gap: 4, background: "transparent", border: `1px solid ${C.line}`, borderRadius: 10, padding: "5px 9px", fontSize: 11.5, color: C.muted, cursor: "pointer", fontWeight: 600 },
+  authBtnSolid: { background: C.ink, color: "#fff", border: "none", borderRadius: 10, padding: "7px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" },
+  authLoading: { fontSize: 12, color: C.muted },
+  tabbar: { display: "flex", borderBottom: `1px solid ${C.line}`, background: C.paper, position: "sticky", top: 0, zIndex: 10 },
+  tabBtn: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "12px 2px 10px", background: "transparent", border: "none", fontSize: 10.5, cursor: "pointer", position: "relative" },
+  tabBtnActive: {},
+  tabUnderline: { position: "absolute", bottom: -1, left: "20%", right: "20%", height: 2, background: C.amber, borderRadius: 2 },
+  main: { padding: "18px 16px 8px", maxWidth: 720, margin: "0 auto" },
+  gateBox: { display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 10, padding: "48px 20px", background: C.card, border: `1px dashed ${C.line}`, borderRadius: 14 },
+  gateText: { fontSize: 13, color: C.muted, lineHeight: 1.6, margin: 0, maxWidth: 320 },
+  sectionHead: { fontFamily: "'Noto Serif TC', serif", fontSize: 18, fontWeight: 700, margin: "0 0 14px" },
+  sectionHeadRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
+  helperText: { fontSize: 12.5, color: C.muted, lineHeight: 1.6, margin: "0 0 16px" },
+  addBtn: { display: "flex", alignItems: "center", gap: 5, background: C.ink, color: "#fff", border: "none", borderRadius: 20, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" },
+  dateRow: { marginBottom: 18 },
+  dateInput: { fontFamily: "'JetBrains Mono', monospace", fontSize: 13, padding: "8px 10px", borderRadius: 8, border: `1px solid ${C.line}`, background: C.card, color: C.ink, marginBottom: 12 },
+  progressWrap: { display: "flex", alignItems: "center", gap: 10 },
+  progressTrack: { flex: 1, height: 8, background: C.line, borderRadius: 4, overflow: "hidden" },
+  progressFill: { height: "100%", background: C.pine, borderRadius: 4, transition: "width 0.3s ease" },
+  progressLabel: { fontSize: 12, color: C.muted, fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap" },
+  slotSection: { marginBottom: 20 },
+  slotHeader: { display: "flex", alignItems: "center", gap: 6, marginBottom: 8 },
+  slotTitle: { fontSize: 13, fontWeight: 700, color: C.ink },
+  slotCount: { fontSize: 11, color: C.muted, fontFamily: "'JetBrains Mono', monospace", marginLeft: "auto" },
+  pillRow: { display: "flex", flexDirection: "column", gap: 8 },
+  pillBlister: { display: "flex", alignItems: "center", gap: 12, background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "12px 14px", cursor: "pointer", textAlign: "left", width: "100%" },
+  pillBlisterChecked: { background: C.goodBg, borderColor: C.pine },
+  pillDot: { width: 26, height: 26, borderRadius: "50%", border: `2px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  pillDotChecked: { background: C.pine, borderColor: C.pine },
+  pillInfo: { display: "flex", flexDirection: "column" },
+  pillName: { fontSize: 14, fontWeight: 600, color: C.ink },
+  pillNameChecked: { color: C.pine },
+  pillDose: { fontSize: 12, color: C.muted, marginTop: 2 },
+  cardList: { display: "flex", flexDirection: "column", gap: 10 },
+  supplementCard: { background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 },
+  supplementCardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" },
+  supplementName: { fontSize: 15, fontWeight: 700 },
+  supplementDose: { fontSize: 12, color: C.muted, marginTop: 2 },
+  supplementNote: { fontSize: 12, color: C.muted, marginTop: 8, fontStyle: "italic" },
+  iconBtnGhost: { background: "transparent", border: "none", cursor: "pointer", padding: 4, flexShrink: 0 },
+  chipRow: { display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 },
+  timeChip: { fontSize: 11, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 10px", color: C.pine, fontWeight: 600 },
+  timeChipMuted: { fontSize: 11, color: C.muted, fontStyle: "italic" },
+  ingredientChip: { fontSize: 11, background: "#F0EBE0", border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 10px", color: C.ink, fontWeight: 500 },
+  timeChipSelectable: { fontSize: 13, background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: "6px 14px", color: C.muted, cursor: "pointer", fontWeight: 600 },
+  timeChipSelected: { background: C.pine, color: "#fff", borderColor: C.pine },
+  filterRow: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 },
+  filterChip: { fontSize: 12, background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "6px 12px", color: C.muted, cursor: "pointer", fontWeight: 600 },
+  filterChipActive: { background: C.ink, color: "#fff", borderColor: C.ink },
+  nutrientCard: { background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 },
+  nutrientCardTop: { display: "flex", justifyContent: "space-between", alignItems: "center" },
+  nutrientName: { fontSize: 15, fontWeight: 700, fontFamily: "'Noto Serif TC', serif" },
+  nutrientCategory: { fontSize: 11, color: C.amber, fontWeight: 700 },
+  nutrientFunc: { fontSize: 13, color: C.ink, opacity: 0.85, margin: "8px 0 10px", lineHeight: 1.5 },
+  rdaRow: { display: "flex", gap: 8, marginTop: 8 },
+  rdaBox: { flex: 1, background: C.paper, borderRadius: 10, padding: "8px 10px" },
+  rdaLabel: { display: "block", fontSize: 10, color: C.muted, marginBottom: 3 },
+  rdaValue: { display: "block", fontSize: 12, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: C.pine },
+  rdaValueAlert: { display: "block", fontSize: 12, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: C.rust },
+  comboSectionHead: { display: "flex", alignItems: "center", gap: 6, marginBottom: 10 },
+  comboCardGood: { background: C.goodBg, border: `1px solid #C9D9CC`, borderRadius: 14, padding: 14 },
+  comboCardAvoid: { background: C.avoidBg, border: `1px solid #E6CBB9`, borderRadius: 14, padding: 14, marginBottom: 8 },
+  comboPair: { fontSize: 14, fontWeight: 700 },
+  comboPlus: { color: C.muted, fontWeight: 400 },
+  comboNote: { fontSize: 13, color: C.ink, opacity: 0.85, margin: "6px 0 0", lineHeight: 1.5 },
+  disclaimer: { fontSize: 11, color: C.muted, marginTop: 20, lineHeight: 1.6, borderTop: `1px solid ${C.line}`, paddingTop: 14 },
+  disclaimerSmall: { fontSize: 11, color: C.muted, marginTop: 14, lineHeight: 1.6, fontStyle: "italic" },
+  emptyState: { display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 10, padding: "36px 20px", background: C.card, border: `1px dashed ${C.line}`, borderRadius: 14 },
+  emptyText: { fontSize: 13, color: C.muted, lineHeight: 1.6, margin: 0 },
+  productCard: { background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 },
+  productCardActive: { borderColor: C.pine, boxShadow: `0 0 0 1px ${C.pine}` },
+  productCardTop: { display: "flex", gap: 10, alignItems: "flex-start" },
+  productBrand: { fontSize: 11, color: C.amber, fontWeight: 700 },
+  productName: { fontSize: 15, fontWeight: 700, marginTop: 1 },
+  productOwner: { fontSize: 10.5, color: C.muted, marginTop: 3 },
+  thumbImg: { borderRadius: 10, objectFit: "cover", border: `1px solid ${C.line}`, flexShrink: 0 },
+  thumbPlaceholder: { borderRadius: 10, background: C.paper, border: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  productActionsRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, gap: 8, flexWrap: "wrap" },
+  compareCheckLabel: { display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: C.ink, fontWeight: 600, cursor: "pointer" },
+  checkboxNative: { width: 16, height: 16, accentColor: C.pine, cursor: "pointer" },
+  linkBtn: { display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: C.pine, border: `1px solid ${C.line}`, borderRadius: 10, padding: "6px 10px", textDecoration: "none", fontWeight: 600 },
+  smallSolidBtn: { fontSize: 12, background: C.ink, color: "#fff", border: "none", borderRadius: 10, padding: "7px 12px", fontWeight: 600, cursor: "pointer" },
+  comparePanel: { marginTop: 22, background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 16 },
+  compareChip: { fontSize: 11, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 10px", color: C.ink, fontWeight: 600 },
+  compareOkBox: { fontSize: 13, color: C.pine, background: C.goodBg, borderRadius: 10, padding: "10px 12px", marginTop: 10, lineHeight: 1.5 },
+  compareSubhead: { display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: C.rust, marginBottom: 8 },
+  duplicateCard: { background: C.avoidBg, border: `1px solid #E6CBB9`, borderRadius: 12, padding: 12, marginBottom: 8 },
+  duplicateSources: { display: "flex", flexDirection: "column", gap: 3, marginTop: 6 },
+  duplicateSourceTag: { fontSize: 11.5, color: C.ink, opacity: 0.85 },
+  modalOverlay: { position: "fixed", inset: 0, background: "rgba(32,52,44,0.4)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 50 },
+  modalCard: { background: C.paper, width: "100%", maxWidth: 480, borderRadius: "20px 20px 0 0", padding: 20, maxHeight: "85vh", overflowY: "auto" },
+  modalHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
+  modalTitle: { fontFamily: "'Noto Serif TC', serif", fontSize: 17, fontWeight: 700 },
+  label: { display: "block", fontSize: 12, color: C.muted, marginTop: 12, marginBottom: 6, fontWeight: 600 },
+  input: { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 10, border: `1px solid ${C.line}`, background: C.card, fontSize: 14, fontFamily: "'Noto Sans TC', sans-serif", color: C.ink },
+  ingredientRow: { display: "flex", gap: 6, alignItems: "center", marginTop: 8 },
+  addIngredientBtn: { display: "flex", alignItems: "center", gap: 4, background: "transparent", border: `1px dashed ${C.line}`, borderRadius: 10, padding: "6px 12px", fontSize: 12, color: C.pine, fontWeight: 600, cursor: "pointer", marginTop: 8 },
+  submitBtn: { width: "100%", marginTop: 20, padding: "13px 0", background: C.ink, color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer" },
+};
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
