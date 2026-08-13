@@ -538,6 +538,10 @@ function App() {
     db.collection("users").doc(user.uid).collection("supplements").doc(id).update(item)
       .then(() => setEditingMine(null)).catch((e) => alert("更新失敗：" + e.message));
   };
+  const toggleSupplementActive = (id, currentActive) => {
+    if (!user) return;
+    db.collection("users").doc(user.uid).collection("supplements").doc(id).update({ active: !currentActive }).catch((e) => alert("更新失敗：" + e.message));
+  };
   const removeSupplement = (id) => {
     if (!user) return;
     db.collection("users").doc(user.uid).collection("supplements").doc(id).delete().catch((e) => alert("刪除失敗：" + e.message));
@@ -629,7 +633,7 @@ function App() {
           ) : <LoginGate reason="登入 Google 帳號後，即可查看並勾選你的每日服用排程。" />
         )}
         {tab === "mine" && (
-          user ? <MineView mySupplements={mySupplements} onAdd={() => setShowAddMine(true)} onRemove={removeSupplement} onEdit={(s) => setEditingMine(s)} />
+          user ? <MineView mySupplements={mySupplements} onAdd={() => setShowAddMine(true)} onRemove={removeSupplement} onEdit={(s) => setEditingMine(s)} onToggleActive={toggleSupplementActive} />
                : <LoginGate reason="登入 Google 帳號後，即可管理你自己的保健品清單。" />
         )}
         {tab === "reference" && <ReferenceView categories={categories} filter={nutrientFilter} setFilter={setNutrientFilter} list={filteredNutrients} />}
@@ -803,11 +807,23 @@ function IntakeTable({ intake, title, helper }) {
   );
 }
 
-function MineView({ mySupplements, onAdd, onRemove, onEdit }) {
+function MineView({ mySupplements, onAdd, onRemove, onEdit, onToggleActive }) {
   const activeSupplements = React.useMemo(() => mySupplements.filter(isSupplementActive), [mySupplements]);
   const intake = React.useMemo(() => summarizeIntake(activeSupplements), [activeSupplements]);
   const [sortMode, setSortMode] = useState("recent");
-  const sortedSupplements = sortMode === "name" ? sortByName(mySupplements, (s) => s.name) : mySupplements;
+  const sortedSupplements = React.useMemo(() => {
+    if (sortMode === "name") return sortByName(mySupplements, (s) => s.name);
+    const list = [...mySupplements];
+    list.sort((a, b) => {
+      const aActive = isSupplementActive(a) ? 1 : 0;
+      const bActive = isSupplementActive(b) ? 1 : 0;
+      if (aActive !== bActive) return bActive - aActive; // 正在吃的排前面
+      const aTime = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+      const bTime = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+      return bTime - aTime; // 新到舊
+    });
+    return list;
+  }, [mySupplements, sortMode]);
   return (
     <div>
       <div style={styles.sectionHeadRow}>
@@ -822,7 +838,7 @@ function MineView({ mySupplements, onAdd, onRemove, onEdit }) {
       {mySupplements.length > 1 && (
         <div style={styles.sortRow}>
           <select value={sortMode} onChange={(e) => setSortMode(e.target.value)} style={styles.sortSelect}>
-            <option value="recent">排序：新增順序</option>
+            <option value="recent">排序：正在吃優先（新到舊）</option>
             <option value="name">排序：名稱（A→Z／筆畫少→多）</option>
           </select>
         </div>
@@ -835,6 +851,7 @@ function MineView({ mySupplements, onAdd, onRemove, onEdit }) {
           const low = hasServings && Number(s.remainingServings) <= 5;
           const empty = hasServings && Number(s.remainingServings) <= 0;
           const active = isSupplementActive(s);
+          const rawActive = s.active !== false;
           return (
           <div key={s.id} style={{ ...styles.supplementCard, ...(active ? {} : styles.supplementCardInactive) }}>
             <div style={styles.supplementCardTop}>
@@ -847,7 +864,11 @@ function MineView({ mySupplements, onAdd, onRemove, onEdit }) {
                   {s.dailyUnits && Number(s.dailyUnits) !== 1 && (
                     <div style={styles.supplementMeta}>實際使用：{s.dailyUnits}顆</div>
                   )}
-                  {!active && <span style={styles.inactiveBadge}>尚未開始服用</span>}
+                  <label style={styles.activeCheckLabel} title={!rawActive ? "" : (active ? "" : "已勾選正在吃，但開始服用日期還沒到，暫不計入")}>
+                    <input type="checkbox" checked={rawActive} onChange={() => onToggleActive(s.id, rawActive)} style={styles.checkboxNative} />
+                    正在吃
+                    {rawActive && !active && <span style={styles.inactiveBadge}>日期未到</span>}
+                  </label>
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
@@ -1554,7 +1575,8 @@ const styles = {
   cardList: { display: "flex", flexDirection: "column", gap: 10 },
   supplementCard: { background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 },
   supplementCardInactive: { opacity: 0.65, background: C.paper },
-  inactiveBadge: { display: "inline-block", marginTop: 4, fontSize: "0.75rem", background: "#F0EBE0", border: `1px solid ${C.line}`, borderRadius: 10, padding: "2px 8px", color: C.muted, fontWeight: 600 },
+  inactiveBadge: { display: "inline-block", marginTop: 4, fontSize: "0.75rem", background: "#F0EBE0", border: `1px solid ${C.line}`, borderRadius: 10, padding: "2px 8px", color: C.muted, fontWeight: 600, marginLeft: 6 },
+  activeCheckLabel: { display: "flex", alignItems: "center", gap: 5, fontSize: "0.8654rem", color: C.pine, fontWeight: 700, cursor: "pointer", marginTop: 6 },
   supplementCardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" },
   supplementName: { fontSize: "1.1058rem", fontWeight: 700 },
   supplementDose: { fontSize: "0.8894rem", color: C.muted, marginTop: 2 },
