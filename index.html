@@ -281,9 +281,9 @@ function excelRowToProduct(row) {
   return {
     brand: String(row["品牌"] || "").trim(),
     name: String(row["產品名稱"] || "未命名產品").trim(),
-    image: "",
-    link: "",
-    dailyDose: "",
+    image: row["圖片連結"] ? String(row["圖片連結"]).trim() : "",
+    link: row["購買連結"] ? String(row["購買連結"]).trim() : "",
+    dailyDose: row["每日用量"] ? String(row["每日用量"]).trim() : "",
     spec: row["規格"] ? String(row["規格"]).trim() : "",
     form: row["劑型"] ? String(row["劑型"]).trim() : "",
     channel: row["購買通路"] ? String(row["購買通路"]).trim() : "",
@@ -297,12 +297,14 @@ function excelRowToProduct(row) {
 
 /* 產生並下載 Excel 匯入範本，欄位跟 EXCEL_INGREDIENT_COLUMNS／excelRowToProduct 完全對應 */
 function downloadExcelTemplate() {
-  const baseCols = ["品牌", "產品名稱", "規格", "劑型", "購買通路", "通路網址", "備註", "推薦者", "標籤1", "標籤2", "標籤3", "標籤4"];
+  const baseCols = ["品牌", "產品名稱", "圖片連結", "購買連結", "每日用量", "規格", "劑型", "購買通路", "通路網址", "備註", "推薦者", "標籤1", "標籤2", "標籤3", "標籤4"];
   const ingredientCols = [];
   Object.entries(EXCEL_INGREDIENT_COLUMNS).forEach(([col, [unitCol]]) => { ingredientCols.push(col, unitCol); });
   const headers = [...baseCols, ...ingredientCols];
   const example = {
-    "品牌": "GNC", "產品名稱": "維生素D3 軟膠囊", "規格": "90粒／瓶", "劑型": "軟膠囊",
+    "品牌": "GNC", "產品名稱": "維生素D3 軟膠囊", "圖片連結": "https://example.com/photo.jpg",
+    "購買連結": "https://www.iherb.com/pr/xxxx", "每日用量": "每日1顆，隨餐服用",
+    "規格": "90粒／瓶", "劑型": "軟膠囊",
     "購買通路": "iHerb", "通路網址": "https://www.iherb.com", "備註": "隨餐服用吸收較佳",
     "推薦者": "貓貓", "標籤1": "維生素", "標籤2": "骨骼保健",
     "維生素D3": 25, "維生素D3單位": "mcg",
