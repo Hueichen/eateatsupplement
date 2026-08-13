@@ -130,47 +130,47 @@ const IInfo = (p) => <Icon {...p}><circle cx="12" cy="12" r="9"/><line x1="12" y
    靜態資料庫：成分
    ========================================================= */
 const NUTRIENT_DB = [
-  { id: "vitd", name: "維生素D3", category: "維生素", func: "促進鈣吸收、支持骨骼與免疫系統", rda: "10–20 mcg (400–800 IU)", ul: "100 mcg (4000 IU)", unit: "mcg" , ulValue: 100, ulUnit: "mcg" },
-  { id: "vitk", name: "維生素K", category: "維生素", func: "凝血功能、骨骼代謝", rda: "90–120 mcg", ul: "無明確上限", unit: "mcg" , ulValue: null, ulUnit: "mcg" },
-  { id: "niacin", name: "菸鹼素（B3）", category: "維生素", func: "能量代謝、皮膚與神經系統健康", rda: "14–16 mg", ul: "35 mg", unit: "mg" , ulValue: 35, ulUnit: "mg" },
-  { id: "vita", name: "維生素A", category: "維生素", func: "視力健康、皮膚黏膜修復、免疫功能", rda: "700–900 mcg RAE", ul: "3000 mcg RAE", unit: "mcg" , ulValue: 3000, ulUnit: "mcg" },
-  { id: "vitb1", name: "維生素B1（硫胺素）", category: "維生素", func: "醣類代謝、神經傳導功能", rda: "1.1–1.2 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" },
-  { id: "vitb2", name: "維生素B2（核黃素）", category: "維生素", func: "能量代謝、皮膚與眼睛健康", rda: "1.1–1.3 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" },
-  { id: "vitb6", name: "維生素B6", category: "維生素", func: "胺基酸代謝、神經傳導物質合成", rda: "1.3–1.7 mg", ul: "100 mg", unit: "mg" , ulValue: 100, ulUnit: "mg" },
-  { id: "vitb12", name: "維生素B12", category: "維生素", func: "紅血球生成、神經系統維護", rda: "2.4 mcg", ul: "無明確上限", unit: "mcg" , ulValue: null, ulUnit: "mcg" },
-  { id: "folate", name: "葉酸", category: "維生素", func: "細胞分裂與DNA合成，孕期尤其重要", rda: "400 mcg", ul: "1000 mcg", unit: "mcg" , ulValue: 1000, ulUnit: "mcg" },
-  { id: "bcomplex", name: "維生素B群", category: "維生素", func: "能量代謝、神經功能、紅血球生成（綜合型）", rda: "依各B維生素而異", ul: "依各B維生素而異", unit: "mg" , ulValue: null, ulUnit: "mg" },
-  { id: "vitc", name: "維生素C", category: "維生素", func: "抗氧化、膠原蛋白合成、增加鐵吸收", rda: "75–90 mg", ul: "2000 mg", unit: "mg" , ulValue: 2000, ulUnit: "mg" },
-  { id: "vitamin_e", name: "維生素E", category: "維生素", func: "脂溶性抗氧化劑、保護細胞膜", rda: "15 mg", ul: "1000 mg", unit: "mg" , ulValue: 1000, ulUnit: "mg" },
-  { id: "calcium", name: "鈣", category: "礦物質", func: "維持骨骼與牙齒健康、神經傳導、肌肉收縮", rda: "1000–1200 mg", ul: "2500 mg", unit: "mg" , ulValue: 2500, ulUnit: "mg" },
-  { id: "magnesium", name: "鎂", category: "礦物質", func: "肌肉放鬆、神經穩定、能量代謝、睡眠品質", rda: "310–420 mg", ul: "350 mg（補充劑上限）", unit: "mg" , ulValue: 350, ulUnit: "mg" },
-  { id: "zinc", name: "鋅", category: "礦物質", func: "免疫功能、傷口癒合、味覺嗅覺", rda: "8–11 mg", ul: "40 mg", unit: "mg" , ulValue: 40, ulUnit: "mg" },
-  { id: "iron", name: "鐵", category: "礦物質", func: "血紅素合成、氧氣運輸、預防貧血", rda: "8–18 mg", ul: "45 mg", unit: "mg" , ulValue: 45, ulUnit: "mg" },
-  { id: "copper", name: "銅", category: "礦物質", func: "鐵代謝、結締組織合成、抗氧化酵素輔因子", rda: "0.9 mg", ul: "10 mg", unit: "mg" , ulValue: 10, ulUnit: "mg" },
-  { id: "selenium", name: "硒", category: "礦物質", func: "抗氧化酵素成分、甲狀腺荷爾蒙代謝", rda: "55 mcg", ul: "400 mcg", unit: "mcg" , ulValue: 400, ulUnit: "mcg" },
-  { id: "iodine", name: "碘", category: "礦物質", func: "甲狀腺荷爾蒙合成、代謝調節", rda: "150 mcg", ul: "1100 mcg", unit: "mcg" , ulValue: 1100, ulUnit: "mcg" },
-  { id: "chromium", name: "鉻", category: "礦物質", func: "協助胰島素作用、醣類與脂質代謝", rda: "25–35 mcg", ul: "無明確上限", unit: "mcg" , ulValue: null, ulUnit: "mcg" },
-  { id: "manganese", name: "錳", category: "礦物質", func: "骨骼形成、抗氧化酵素輔因子", rda: "1.8–2.3 mg", ul: "11 mg", unit: "mg" , ulValue: 11, ulUnit: "mg" },
-  { id: "potassium", name: "鉀", category: "礦物質", func: "體液平衡、神經與肌肉功能、血壓調節", rda: "2600–3400 mg", ul: "無明確上限（腎功能不佳者需留意）", unit: "mg" , ulValue: null, ulUnit: "mg" },
-  { id: "omega3", name: "Omega-3 魚油", category: "脂肪酸", func: "心血管健康、抗發炎、腦部與視力發育", rda: "250–500 mg (EPA+DHA)", ul: "一般建議 <3000 mg", unit: "mg" , ulValue: 3000, ulUnit: "mg" },
-  { id: "epa", name: "EPA", category: "脂肪酸", func: "Omega-3 脂肪酸之一，心血管與抗發炎保健", rda: "隨產品標示（常見 300–1000 mg）", ul: "一般建議 EPA+DHA 總量 <3000 mg", unit: "mg" , ulValue: null, ulUnit: "mg" },
-  { id: "dha", name: "DHA", category: "脂肪酸", func: "Omega-3 脂肪酸之一，腦部與視力發育", rda: "隨產品標示（常見 200–600 mg）", ul: "一般建議 EPA+DHA 總量 <3000 mg", unit: "mg" , ulValue: null, ulUnit: "mg" },
-  { id: "probiotic", name: "益生菌", category: "菌種", func: "腸道菌相平衡、消化與部分免疫調節", rda: "10–100 億 CFU", ul: "無明確上限", unit: "億CFU" , ulValue: null, ulUnit: "億CFU" },
-  { id: "coq10", name: "輔酶Q10", category: "類輔酶", func: "細胞能量產生、抗氧化，常與心血管保健併用", rda: "30–200 mg", ul: "一般建議 <1200 mg", unit: "mg" , ulValue: 1200, ulUnit: "mg" },
-  { id: "collagen", name: "膠原蛋白", category: "蛋白質", func: "皮膚彈性、關節與結締組織支持", rda: "2500–10000 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" },
-  { id: "whey", name: "乳清蛋白", category: "蛋白質", func: "肌肉修復與生長、日常蛋白質補充", rda: "20–30 g／次", ul: "依個人總蛋白需求而定", unit: "g" , ulValue: null, ulUnit: "g" },
-  { id: "creatine", name: "肌酸", category: "運動營養", func: "增加高強度運動表現、肌肉能量供應", rda: "3–5 g", ul: "一般建議 <5 g／日長期使用", unit: "g" , ulValue: 5, ulUnit: "g" },
-  { id: "glucosamine", name: "葡萄糖胺", category: "關節保健", func: "軟骨基質成分，關節保健常見成分", rda: "1500 mg", ul: "一般建議 <1500 mg", unit: "mg" , ulValue: 1500, ulUnit: "mg" },
-  { id: "chondroitin", name: "軟骨素", category: "關節保健", func: "軟骨結構成分，常與葡萄糖胺併用於關節保健", rda: "800–1200 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" },
-  { id: "lactoferrin", name: "乳鐵蛋白", category: "蛋白質", func: "免疫調節、腸道與鐵代謝相關保健", rda: "100–300 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" },
-  { id: "anthocyanin", name: "花青素", category: "植化素", func: "抗氧化，常見於護眼與循環保健產品", rda: "隨產品標示（常見 50–300 mg）", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" },
-  { id: "astaxanthin", name: "蝦紅素", category: "植化素", func: "強效抗氧化，護眼與皮膚保健", rda: "4–12 mg", ul: "一般建議 <12 mg", unit: "mg" , ulValue: 12, ulUnit: "mg" },
-  { id: "lutein", name: "葉黃素", category: "植化素", func: "眼睛黃斑部保健、過濾藍光", rda: "6–10 mg", ul: "一般建議 <20 mg", unit: "mg" , ulValue: 20, ulUnit: "mg" },
-  { id: "curcumin", name: "薑黃素", category: "植化素", func: "抗發炎、抗氧化，常用於關節保健", rda: "500–1000 mg", ul: "一般建議 <2000 mg", unit: "mg" , ulValue: 2000, ulUnit: "mg" },
-  { id: "cranberry", name: "蔓越莓萃取", category: "植化素", func: "泌尿道保健，抑制細菌附著尿道壁", rda: "300–500 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" },
-  { id: "hyaluronic", name: "玻尿酸", category: "其他", func: "皮膚保濕、關節潤滑", rda: "120–240 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" },
-  { id: "melatonin", name: "褪黑激素", category: "其他", func: "調節睡眠週期，助入睡", rda: "0.5–5 mg（睡前）", ul: "一般建議 <10 mg", unit: "mg" , ulValue: 10, ulUnit: "mg" },
-  { id: "gaba", name: "GABA", category: "其他", func: "放鬆神經、幫助情緒與睡眠品質", rda: "100–300 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" },
+  { id: "vitd", name: "維生素D3", category: "維生素", func: "促進鈣吸收、支持骨骼與免疫系統", rda: "10–20 mcg (400–800 IU)", ul: "100 mcg (4000 IU)", unit: "mcg" , ulValue: 100, ulUnit: "mcg" , timing: ["早上", "隨餐"] },
+  { id: "vitk", name: "維生素K", category: "維生素", func: "凝血功能、骨骼代謝", rda: "90–120 mcg", ul: "無明確上限", unit: "mcg" , ulValue: null, ulUnit: "mcg" , timing: ["隨餐"] },
+  { id: "niacin", name: "菸鹼素（B3）", category: "維生素", func: "能量代謝、皮膚與神經系統健康", rda: "14–16 mg", ul: "35 mg", unit: "mg" , ulValue: 35, ulUnit: "mg" , timing: ["早上", "隨餐"] },
+  { id: "vita", name: "維生素A", category: "維生素", func: "視力健康、皮膚黏膜修復、免疫功能", rda: "700–900 mcg RAE", ul: "3000 mcg RAE", unit: "mcg" , ulValue: 3000, ulUnit: "mcg" , timing: ["隨餐"] },
+  { id: "vitb1", name: "維生素B1（硫胺素）", category: "維生素", func: "醣類代謝、神經傳導功能", rda: "1.1–1.2 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" , timing: ["早上", "空腹"] },
+  { id: "vitb2", name: "維生素B2（核黃素）", category: "維生素", func: "能量代謝、皮膚與眼睛健康", rda: "1.1–1.3 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" , timing: ["早上", "空腹"] },
+  { id: "vitb6", name: "維生素B6", category: "維生素", func: "胺基酸代謝、神經傳導物質合成", rda: "1.3–1.7 mg", ul: "100 mg", unit: "mg" , ulValue: 100, ulUnit: "mg" , timing: ["早上", "空腹"] },
+  { id: "vitb12", name: "維生素B12", category: "維生素", func: "紅血球生成、神經系統維護", rda: "2.4 mcg", ul: "無明確上限", unit: "mcg" , ulValue: null, ulUnit: "mcg" , timing: ["早上", "空腹"] },
+  { id: "folate", name: "葉酸", category: "維生素", func: "細胞分裂與DNA合成，孕期尤其重要", rda: "400 mcg", ul: "1000 mcg", unit: "mcg" , ulValue: 1000, ulUnit: "mcg" , timing: ["早上", "空腹"] },
+  { id: "bcomplex", name: "維生素B群", category: "維生素", func: "能量代謝、神經功能、紅血球生成（綜合型）", rda: "依各B維生素而異", ul: "依各B維生素而異", unit: "mg" , ulValue: null, ulUnit: "mg" , timing: ["早上", "隨餐"] },
+  { id: "vitc", name: "維生素C", category: "維生素", func: "抗氧化、膠原蛋白合成、增加鐵吸收", rda: "75–90 mg", ul: "2000 mg", unit: "mg" , ulValue: 2000, ulUnit: "mg" , timing: ["早上", "隨餐"] },
+  { id: "vitamin_e", name: "維生素E", category: "維生素", func: "脂溶性抗氧化劑、保護細胞膜", rda: "15 mg", ul: "1000 mg", unit: "mg" , ulValue: 1000, ulUnit: "mg" , timing: ["隨餐"] },
+  { id: "calcium", name: "鈣", category: "礦物質", func: "維持骨骼與牙齒健康、神經傳導、肌肉收縮", rda: "1000–1200 mg", ul: "2500 mg", unit: "mg" , ulValue: 2500, ulUnit: "mg" , timing: ["晚上", "隨餐"] },
+  { id: "magnesium", name: "鎂", category: "礦物質", func: "肌肉放鬆、神經穩定、能量代謝、睡眠品質", rda: "310–420 mg", ul: "350 mg（補充劑上限）", unit: "mg" , ulValue: 350, ulUnit: "mg" , timing: ["睡前"] },
+  { id: "zinc", name: "鋅", category: "礦物質", func: "免疫功能、傷口癒合、味覺嗅覺", rda: "8–11 mg", ul: "40 mg", unit: "mg" , ulValue: 40, ulUnit: "mg" , timing: ["晚上", "空腹"] },
+  { id: "iron", name: "鐵", category: "礦物質", func: "血紅素合成、氧氣運輸、預防貧血", rda: "8–18 mg", ul: "45 mg", unit: "mg" , ulValue: 45, ulUnit: "mg" , timing: ["早上", "空腹"] },
+  { id: "copper", name: "銅", category: "礦物質", func: "鐵代謝、結締組織合成、抗氧化酵素輔因子", rda: "0.9 mg", ul: "10 mg", unit: "mg" , ulValue: 10, ulUnit: "mg" , timing: ["隨餐"] },
+  { id: "selenium", name: "硒", category: "礦物質", func: "抗氧化酵素成分、甲狀腺荷爾蒙代謝", rda: "55 mcg", ul: "400 mcg", unit: "mcg" , ulValue: 400, ulUnit: "mcg" , timing: ["隨餐"] },
+  { id: "iodine", name: "碘", category: "礦物質", func: "甲狀腺荷爾蒙合成、代謝調節", rda: "150 mcg", ul: "1100 mcg", unit: "mcg" , ulValue: 1100, ulUnit: "mcg" , timing: ["隨餐"] },
+  { id: "chromium", name: "鉻", category: "礦物質", func: "協助胰島素作用、醣類與脂質代謝", rda: "25–35 mcg", ul: "無明確上限", unit: "mcg" , ulValue: null, ulUnit: "mcg" , timing: ["隨餐"] },
+  { id: "manganese", name: "錳", category: "礦物質", func: "骨骼形成、抗氧化酵素輔因子", rda: "1.8–2.3 mg", ul: "11 mg", unit: "mg" , ulValue: 11, ulUnit: "mg" , timing: ["隨餐"] },
+  { id: "potassium", name: "鉀", category: "礦物質", func: "體液平衡、神經與肌肉功能、血壓調節", rda: "2600–3400 mg", ul: "無明確上限（腎功能不佳者需留意）", unit: "mg" , ulValue: null, ulUnit: "mg" , timing: ["隨餐"] },
+  { id: "omega3", name: "Omega-3 魚油", category: "脂肪酸", func: "心血管健康、抗發炎、腦部與視力發育", rda: "250–500 mg (EPA+DHA)", ul: "一般建議 <3000 mg", unit: "mg" , ulValue: 3000, ulUnit: "mg" , timing: ["晚上", "隨餐"] },
+  { id: "epa", name: "EPA", category: "脂肪酸", func: "Omega-3 脂肪酸之一，心血管與抗發炎保健", rda: "隨產品標示（常見 300–1000 mg）", ul: "一般建議 EPA+DHA 總量 <3000 mg", unit: "mg" , ulValue: null, ulUnit: "mg" , timing: ["晚上", "隨餐"] },
+  { id: "dha", name: "DHA", category: "脂肪酸", func: "Omega-3 脂肪酸之一，腦部與視力發育", rda: "隨產品標示（常見 200–600 mg）", ul: "一般建議 EPA+DHA 總量 <3000 mg", unit: "mg" , ulValue: null, ulUnit: "mg" , timing: ["晚上", "隨餐"] },
+  { id: "probiotic", name: "益生菌", category: "菌種", func: "腸道菌相平衡、消化與部分免疫調節", rda: "10–100 億 CFU", ul: "無明確上限", unit: "億CFU" , ulValue: null, ulUnit: "億CFU" , timing: ["早上", "空腹"] },
+  { id: "coq10", name: "輔酶Q10", category: "類輔酶", func: "細胞能量產生、抗氧化，常與心血管保健併用", rda: "30–200 mg", ul: "一般建議 <1200 mg", unit: "mg" , ulValue: 1200, ulUnit: "mg" , timing: ["早上", "隨餐"] },
+  { id: "collagen", name: "膠原蛋白", category: "蛋白質", func: "皮膚彈性、關節與結締組織支持", rda: "2500–10000 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" , timing: ["睡前", "空腹"] },
+  { id: "whey", name: "乳清蛋白", category: "蛋白質", func: "肌肉修復與生長、日常蛋白質補充", rda: "20–30 g／次", ul: "依個人總蛋白需求而定", unit: "g" , ulValue: null, ulUnit: "g" , timing: [] },
+  { id: "creatine", name: "肌酸", category: "運動營養", func: "增加高強度運動表現、肌肉能量供應", rda: "3–5 g", ul: "一般建議 <5 g／日長期使用", unit: "g" , ulValue: 5, ulUnit: "g" , timing: [] },
+  { id: "glucosamine", name: "葡萄糖胺", category: "關節保健", func: "軟骨基質成分，關節保健常見成分", rda: "1500 mg", ul: "一般建議 <1500 mg", unit: "mg" , ulValue: 1500, ulUnit: "mg" , timing: ["隨餐"] },
+  { id: "chondroitin", name: "軟骨素", category: "關節保健", func: "軟骨結構成分，常與葡萄糖胺併用於關節保健", rda: "800–1200 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" , timing: ["隨餐"] },
+  { id: "lactoferrin", name: "乳鐵蛋白", category: "蛋白質", func: "免疫調節、腸道與鐵代謝相關保健", rda: "100–300 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" , timing: ["早上", "空腹"] },
+  { id: "anthocyanin", name: "花青素", category: "植化素", func: "抗氧化，常見於護眼與循環保健產品", rda: "隨產品標示（常見 50–300 mg）", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" , timing: ["隨餐"] },
+  { id: "astaxanthin", name: "蝦紅素", category: "植化素", func: "強效抗氧化，護眼與皮膚保健", rda: "4–12 mg", ul: "一般建議 <12 mg", unit: "mg" , ulValue: 12, ulUnit: "mg" , timing: ["隨餐"] },
+  { id: "lutein", name: "葉黃素", category: "植化素", func: "眼睛黃斑部保健、過濾藍光", rda: "6–10 mg", ul: "一般建議 <20 mg", unit: "mg" , ulValue: 20, ulUnit: "mg" , timing: ["隨餐"] },
+  { id: "curcumin", name: "薑黃素", category: "植化素", func: "抗發炎、抗氧化，常用於關節保健", rda: "500–1000 mg", ul: "一般建議 <2000 mg", unit: "mg" , ulValue: 2000, ulUnit: "mg" , timing: ["隨餐"] },
+  { id: "cranberry", name: "蔓越莓萃取", category: "植化素", func: "泌尿道保健，抑制細菌附著尿道壁", rda: "300–500 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" , timing: ["隨餐"] },
+  { id: "hyaluronic", name: "玻尿酸", category: "其他", func: "皮膚保濕、關節潤滑", rda: "120–240 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" , timing: ["空腹"] },
+  { id: "melatonin", name: "褪黑激素", category: "其他", func: "調節睡眠週期，助入睡", rda: "0.5–5 mg（睡前）", ul: "一般建議 <10 mg", unit: "mg" , ulValue: 10, ulUnit: "mg" , timing: ["睡前"] },
+  { id: "gaba", name: "GABA", category: "其他", func: "放鬆神經、幫助情緒與睡眠品質", rda: "100–300 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" , timing: ["睡前"] },
 ];
 const nutrientByName = (name) => NUTRIENT_DB.find((n) => n.name === name);
 
@@ -317,13 +317,15 @@ function downloadExcelTemplate() {
   XLSX.writeFile(wb, "備品匯入範本.xlsx");
 }
 
+const TIME_TAGS = ["早上", "中午", "晚上", "睡前", "隨餐", "空腹"];
+
 const COMBOS_GOOD = [
-  { pair: ["維生素D3", "鈣"], note: "維生素D促進鈣吸收，兩者併用效果加乘，建議隨餐服用。" },
-  { pair: ["維生素D3", "鎂"], note: "鎂是維生素D代謝為活性形式的輔因子，缺鎂會降低維生素D效用。" },
-  { pair: ["維生素C", "鐵"], note: "維生素C可將非血基質鐵還原為更易吸收的形式，建議同時服用。" },
-  { pair: ["益生菌", "維生素B群"], note: "部分腸道菌可協助合成B群，腸道健康有助整體營養吸收。" },
-  { pair: ["輔酶Q10", "維生素E"], note: "兩者皆為脂溶性抗氧化物，隨油脂性餐點服用吸收較佳。" },
-  { pair: ["葉黃素", "維生素E"], note: "葉黃素為脂溶性，與脂溶性抗氧化劑併用、隨油脂餐點服用吸收較佳。" },
+  { pair: ["維生素D3", "鈣"], note: "維生素D促進鈣吸收，兩者併用效果加乘，建議隨餐服用。", timing: ["早上", "隨餐"] },
+  { pair: ["維生素D3", "鎂"], note: "鎂是維生素D代謝為活性形式的輔因子，缺鎂會降低維生素D效用。", timing: ["晚上", "隨餐"] },
+  { pair: ["維生素C", "鐵"], note: "維生素C可將非血基質鐵還原為更易吸收的形式，建議同時服用。", timing: ["早上", "空腹"] },
+  { pair: ["益生菌", "維生素B群"], note: "部分腸道菌可協助合成B群，腸道健康有助整體營養吸收。", timing: ["早上", "空腹"] },
+  { pair: ["輔酶Q10", "維生素E"], note: "兩者皆為脂溶性抗氧化物，隨油脂性餐點服用吸收較佳。", timing: ["早上", "隨餐"] },
+  { pair: ["葉黃素", "維生素E"], note: "葉黃素為脂溶性，與脂溶性抗氧化劑併用、隨油脂餐點服用吸收較佳。", timing: ["中午", "隨餐"] },
 ];
 const COMBOS_AVOID = [
   { pair: ["鈣", "鐵"], note: "鈣會競爭抑制鐵的吸收，建議間隔至少 2 小時分開服用。" },
@@ -343,6 +345,23 @@ const TIME_SLOTS = [
   { id: "evening", label: "晚上", Icon: ISunset },
   { id: "bedtime", label: "睡前", Icon: IMoon },
 ];
+const TIMING_TO_SLOT = { "早上": "morning", "中午": "noon", "晚上": "evening", "睡前": "bedtime" };
+const MEAL_OPTIONS = ["隨餐", "空腹"];
+
+/* 依成分清單，彙整資料庫建議的服用時段與隨餐/空腹，供「加入我的保健品」時預設帶入 */
+function suggestTiming(ingredients) {
+  const slotSet = new Set();
+  let meal = "";
+  (ingredients || []).forEach((ing) => {
+    const ref = nutrientByName(ing.name);
+    if (!ref || !ref.timing) return;
+    ref.timing.forEach((t) => {
+      if (TIMING_TO_SLOT[t]) slotSet.add(TIMING_TO_SLOT[t]);
+      else if (MEAL_OPTIONS.includes(t) && !meal) meal = t;
+    });
+  });
+  return { times: Array.from(slotSet), meal };
+}
 
 const todayKey = () => {
   const d = new Date();
@@ -533,7 +552,7 @@ function App() {
       <nav style={styles.tabbar}>
         <TabButton Icon={ICalendar} label="每日服用" active={tab === "checklist"} onClick={() => setTab("checklist")} locked={!user} accent={C.amber} />
         <TabButton Icon={IPill} label="我的保健品" active={tab === "mine"} onClick={() => setTab("mine")} locked={!user} accent={C.amber} />
-        <TabButton Icon={IBook} label="建議用量" active={tab === "reference"} onClick={() => setTab("reference")} accent={C.amber} />
+        <TabButton Icon={IBook} label="建議用法" active={tab === "reference"} onClick={() => setTab("reference")} accent={C.amber} />
         <TabButton Icon={IPackage} label="備品選擇" active={tab === "library"} onClick={() => setTab("library")} accent={C.amber} />
       </nav>
 
@@ -589,7 +608,7 @@ function App() {
             image: pendingLibraryProduct.image || "",
             link: pendingLibraryProduct.link || "",
             sourceProductId: pendingLibraryProduct.id,
-            times: [],
+            ...suggestTiming(pendingLibraryProduct.ingredients),
           }}
           title="設定服用時段"
           submitLabel="加入我的保健品"
@@ -661,7 +680,7 @@ function ChecklistView({ selectedDate, setSelectedDate, dayEntries, dayLog, togg
                   <div style={{ ...styles.pillDot, ...(checked ? { ...styles.pillDotChecked, background: slotColor, borderColor: slotColor } : {}) }}>{checked && <ICheck size={13} color="#fff" strokeWidth={3} />}</div>
                   <div style={styles.pillInfo}>
                     <span style={{ ...styles.pillName, ...(checked ? styles.pillNameChecked : {}) }}>{e.supplement.name}</span>
-                    <span style={styles.pillDose}>{e.supplement.dose}</span>
+                    <span style={styles.pillDose}>{e.supplement.dose}{e.supplement.meal ? ` · ${e.supplement.meal}` : ""}</span>
                   </div>
                 </button>
               );
@@ -759,6 +778,7 @@ function MineView({ mySupplements, onAdd, onRemove, onEdit }) {
             )}
             <div style={styles.chipRow}>
               {(s.times || []).map((t) => { const slot = TIME_SLOTS.find((x) => x.id === t); return <span key={t} style={styles.timeChip}>{slot ? slot.label : t}</span>; })}
+              {s.meal && <span style={styles.timeChip}>{s.meal}</span>}
               {(!s.times || s.times.length === 0) && (
                 <button onClick={() => onEdit(s)} style={styles.timeChipMutedBtn}>尚未排定服用時段，點此設定</button>
               )}
@@ -772,39 +792,75 @@ function MineView({ mySupplements, onAdd, onRemove, onEdit }) {
   );
 }
 
+function TimingTags({ timing }) {
+  if (!timing || timing.length === 0) return null;
+  return (
+    <div style={styles.chipRow}>
+      {timing.map((t) => <span key={t} style={styles.timingTag}>{t}</span>)}
+    </div>
+  );
+}
+
 function ReferenceView({ categories, filter, setFilter, list }) {
+  const [subTab, setSubTab] = useState("nutrients"); // nutrients | good | avoid
   return (
     <div>
-      <h2 style={styles.sectionHead}>成分與每日建議量</h2>
-      <div style={styles.filterRow}>
-        {categories.map((c) => {
-          const active = filter === c;
-          const cColor = c === "全部" ? C.ink : categoryColor(c);
-          return (
-            <button key={c} onClick={() => setFilter(c)} style={{ ...styles.filterChip, ...(active ? { background: cColor, color: "#fff", borderColor: cColor } : { color: cColor, borderColor: cColor + "55" }) }}>{c}</button>
-          );
-        })}
+      <div style={styles.subTabRow}>
+        <button onClick={() => setSubTab("nutrients")} style={{ ...styles.subTabBtn, ...(subTab === "nutrients" ? styles.subTabBtnActive : {}) }}>成分與每日建議量</button>
+        <button onClick={() => setSubTab("good")} style={{ ...styles.subTabBtn, ...(subTab === "good" ? styles.subTabBtnActive : {}) }}>建議併用</button>
+        <button onClick={() => setSubTab("avoid")} style={{ ...styles.subTabBtn, ...(subTab === "avoid" ? styles.subTabBtnActive : {}) }}>分開服用</button>
       </div>
-      <div style={styles.cardList}>
-        {list.map((n) => (
-          <div key={n.id} style={{ ...styles.nutrientCard, borderLeft: `4px solid ${categoryColor(n.category)}` }}>
-            <div style={styles.nutrientCardTop}><span style={styles.nutrientName}>{n.name}</span><span style={{ ...styles.nutrientCategory, color: categoryColor(n.category) }}>{n.category}</span></div>
-            <p style={styles.nutrientFunc}>{n.func}</p>
-            <div style={styles.rdaRow}>
-              <div style={styles.rdaBox}><span style={styles.rdaLabel}>每日建議量</span><span style={styles.rdaValue}>{n.rda}</span></div>
-              <div style={styles.rdaBox}><span style={styles.rdaLabel}>上限攝取量</span><span style={styles.rdaValueAlert}>{n.ul}</span></div>
-            </div>
+
+      {subTab === "nutrients" && (
+        <div>
+          <div style={styles.filterRow}>
+            {categories.map((c) => {
+              const active = filter === c;
+              const cColor = c === "全部" ? C.ink : categoryColor(c);
+              return (
+                <button key={c} onClick={() => setFilter(c)} style={{ ...styles.filterChip, ...(active ? { background: cColor, color: "#fff", borderColor: cColor } : { color: cColor, borderColor: cColor + "55" }) }}>{c}</button>
+              );
+            })}
           </div>
-        ))}
-      </div>
-      <div style={{ ...styles.comboSectionHead, marginTop: 28 }}><ISparkle size={16} color={C.pine} /><span style={{ color: C.pine, fontWeight: 700 }}>建議併用</span></div>
-      <div style={styles.cardList}>
-        {COMBOS_GOOD.map((c, i) => (<div key={i} style={styles.comboCardGood}><div style={styles.comboPair}>{c.pair[0]} <span style={styles.comboPlus}>+</span> {c.pair[1]}</div><p style={styles.comboNote}>{c.note}</p></div>))}
-      </div>
-      <div style={{ ...styles.comboSectionHead, marginTop: 22 }}><IAlert size={16} color={C.rust} /><span style={{ color: C.rust, fontWeight: 700 }}>建議分開服用 / 需留意</span></div>
-      <div style={styles.cardList}>
-        {COMBOS_AVOID.map((c, i) => (<div key={i} style={styles.comboCardAvoid}><div style={styles.comboPair}>{c.pair[0]} <span style={styles.comboPlus}>+</span> {c.pair[1]}</div><p style={styles.comboNote}>{c.note}</p></div>))}
-      </div>
+          <div style={styles.cardList}>
+            {list.map((n) => (
+              <div key={n.id} style={{ ...styles.nutrientCard, borderLeft: `4px solid ${categoryColor(n.category)}` }}>
+                <div style={styles.nutrientCardTop}><span style={styles.nutrientName}>{n.name}</span><span style={{ ...styles.nutrientCategory, color: categoryColor(n.category) }}>{n.category}</span></div>
+                <p style={styles.nutrientFunc}>{n.func}</p>
+                <TimingTags timing={n.timing} />
+                <div style={styles.rdaRow}>
+                  <div style={styles.rdaBox}><span style={styles.rdaLabel}>每日建議量</span><span style={styles.rdaValue}>{n.rda}</span></div>
+                  <div style={styles.rdaBox}><span style={styles.rdaLabel}>上限攝取量</span><span style={styles.rdaValueAlert}>{n.ul}</span></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {subTab === "good" && (
+        <div style={styles.cardList}>
+          {COMBOS_GOOD.map((c, i) => (
+            <div key={i} style={styles.comboCardGood}>
+              <div style={styles.comboPair}>{c.pair[0]} <span style={styles.comboPlus}>+</span> {c.pair[1]}</div>
+              <p style={styles.comboNote}>{c.note}</p>
+              <TimingTags timing={c.timing} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {subTab === "avoid" && (
+        <div style={styles.cardList}>
+          {COMBOS_AVOID.map((c, i) => (
+            <div key={i} style={styles.comboCardAvoid}>
+              <div style={styles.comboPair}>{c.pair[0]} <span style={styles.comboPlus}>+</span> {c.pair[1]}</div>
+              <p style={styles.comboNote}>{c.note}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       <p style={styles.disclaimer}>以上為一般性營養知識整理，僅供參考，非醫療建議。若有特定疾病、用藥或懷孕哺乳等狀況，服用前請諮詢醫師或藥師。</p>
     </div>
   );
@@ -1076,6 +1132,7 @@ function AddToMineModal({ onClose, onSave, productLibrary, initial, title, submi
   const [name, setName] = useState(initial ? initial.name || "" : "");
   const [dose, setDose] = useState(initial ? initial.dose || "" : "");
   const [times, setTimes] = useState(initial ? initial.times || [] : []);
+  const [meal, setMeal] = useState(initial ? initial.meal || "" : "");
   const [note, setNote] = useState(initial ? initial.note || "" : "");
   const [ingredients, setIngredients] = useState(initial && initial.ingredients && initial.ingredients.length ? initial.ingredients : [{ name: "", amount: "", unit: "mg" }]);
   const [image, setImage] = useState(initial ? initial.image || "" : "");
@@ -1085,6 +1142,7 @@ function AddToMineModal({ onClose, onSave, productLibrary, initial, title, submi
   const [remainingServings, setRemainingServings] = useState(initial && initial.remainingServings !== undefined && initial.remainingServings !== null ? String(initial.remainingServings) : "");
 
   const toggleTime = (id) => setTimes((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
+  const toggleMeal = (m) => setMeal((prev) => (prev === m ? "" : m));
 
   const handlePick = (value) => {
     setPick(value);
@@ -1092,16 +1150,26 @@ function AddToMineModal({ onClose, onSave, productLibrary, initial, title, submi
     const [kind, id] = value.split(":");
     if (kind === "lib") {
       const p = productLibrary.find((x) => x.id === id);
-      if (p) { setName(`${p.brand ? p.brand + "｜" : ""}${p.name}`); setDose(p.dailyDose || ""); setNote(p.note || ""); setIngredients(p.ingredients && p.ingredients.length ? p.ingredients : [{ name: "", amount: "", unit: "mg" }]); setImage(p.image || ""); }
+      if (p) {
+        setName(`${p.brand ? p.brand + "｜" : ""}${p.name}`); setDose(p.dailyDose || ""); setNote(p.note || "");
+        const ings = p.ingredients && p.ingredients.length ? p.ingredients : [{ name: "", amount: "", unit: "mg" }];
+        setIngredients(ings); setImage(p.image || "");
+        const sug = suggestTiming(ings);
+        setTimes(sug.times); setMeal(sug.meal);
+      }
     } else if (kind === "db") {
       const n = NUTRIENT_DB.find((x) => x.id === id);
-      if (n) { setName(n.name); setDose(n.rda); setIngredients([{ name: n.name, amount: "", unit: n.unit }]); setImage(""); }
+      if (n) {
+        setName(n.name); setDose(n.rda); setIngredients([{ name: n.name, amount: "", unit: n.unit }]); setImage("");
+        const sug = suggestTiming([{ name: n.name }]);
+        setTimes(sug.times); setMeal(sug.meal);
+      }
     }
   };
 
   const handleSubmit = () => {
     if (!name.trim() || times.length === 0) return;
-    const payload = { name: name.trim(), dose: dose.trim() || "—", times, note: note.trim(), ingredients: ingredients.filter((i) => i.name.trim()), image };
+    const payload = { name: name.trim(), dose: dose.trim() || "—", times, meal, note: note.trim(), ingredients: ingredients.filter((i) => i.name.trim()), image };
     if (initial && initial.link !== undefined) payload.link = initial.link;
     if (initial && initial.sourceProductId !== undefined) payload.sourceProductId = initial.sourceProductId;
     payload.startDate = startDate || null;
@@ -1121,7 +1189,7 @@ function AddToMineModal({ onClose, onSave, productLibrary, initial, title, submi
       <div style={styles.modalCard} className="app-modal-card" onClick={(e) => e.stopPropagation()}>
         <div style={styles.modalHeader}><span style={styles.modalTitle}>{title || "新增到我的保健品"}</span><button onClick={onClose} style={styles.iconBtnGhost}><IX size={18} color={C.muted} /></button></div>
         {lockDetails ? (
-          <p style={styles.helperText}>已從備品庫帶入「{name}」的資料，選好服用時段就可以加入清單；品名／劑量／成分之後也能在「我的保健品」點編輯修改。</p>
+          <p style={styles.helperText}>已從備品庫帶入「{name}」的資料，並依成分資料庫自動預設服用時段（可再自行調整）；品名／劑量／成分之後也能在「我的保健品」點編輯修改。</p>
         ) : (
           <React.Fragment>
             <label style={styles.label}>從備品庫或成分資料庫帶入（選填）</label>
@@ -1130,6 +1198,7 @@ function AddToMineModal({ onClose, onSave, productLibrary, initial, title, submi
               {productLibrary.length > 0 && (<optgroup label="備品庫">{productLibrary.map((p) => <option key={p.id} value={`lib:${p.id}`}>{p.brand ? `${p.brand}｜` : ""}{p.name}</option>)}</optgroup>)}
               <optgroup label="成分資料庫">{NUTRIENT_DB.map((n) => <option key={n.id} value={`db:${n.id}`}>{n.name}</option>)}</optgroup>
             </select>
+            <p style={styles.fieldHint}>從清單選擇後，會依「建議用法」資料庫自動預設服用時段與隨餐/空腹，可再自行調整。</p>
           </React.Fragment>
         )}
         <label style={styles.label}>品名</label>
@@ -1160,6 +1229,10 @@ function AddToMineModal({ onClose, onSave, productLibrary, initial, title, submi
         <label style={styles.label}>服用時段</label>
         <div style={styles.chipRow}>
           {TIME_SLOTS.map((t) => (<button key={t.id} type="button" onClick={() => toggleTime(t.id)} style={{ ...styles.timeChipSelectable, ...(times.includes(t.id) ? styles.timeChipSelected : {}) }}>{t.label}</button>))}
+        </div>
+        <label style={styles.label}>隨餐 / 空腹（選填）</label>
+        <div style={styles.chipRow}>
+          {MEAL_OPTIONS.map((m) => (<button key={m} type="button" onClick={() => toggleMeal(m)} style={{ ...styles.timeChipSelectable, ...(meal === m ? styles.timeChipSelected : {}) }}>{m}</button>))}
         </div>
         <label style={styles.label}>備註（選填）</label>
         <input style={styles.input} value={note} onChange={(e) => setNote(e.target.value)} placeholder="例如：隨餐服用" />
@@ -1261,6 +1334,10 @@ const styles = {
   gateBox: { display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 10, padding: "48px 20px", background: C.card, border: `1px dashed ${C.line}`, borderRadius: 14 },
   gateText: { fontSize: "0.9855rem", color: C.muted, lineHeight: 1.6, margin: 0, maxWidth: 320 },
   sectionHead: { fontFamily: "'Noto Serif TC', serif", fontSize: "1.3462rem", fontWeight: 700, margin: "0 0 14px" },
+  subTabRow: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16, borderBottom: `1px solid ${C.line}`, paddingBottom: 12 },
+  subTabBtn: { fontSize: "0.9615rem", fontWeight: 600, color: C.muted, background: "transparent", border: `1px solid ${C.line}`, borderRadius: 20, padding: "8px 14px", cursor: "pointer" },
+  subTabBtnActive: { background: C.ink, color: "#fff", borderColor: C.ink },
+  timingTag: { fontSize: "0.75rem", background: "#EAF6F4", border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 10px", color: C.pine, fontWeight: 600 },
   sectionHeadRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
   helperText: { fontSize: "0.9615rem", color: C.muted, lineHeight: 1.6, margin: "0 0 16px" },
   addBtn: { display: "flex", alignItems: "center", gap: 5, background: C.ink, color: "#fff", border: "none", borderRadius: 20, padding: "8px 14px", fontSize: "0.9855rem", fontWeight: 600, cursor: "pointer" },
