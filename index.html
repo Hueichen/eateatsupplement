@@ -1161,14 +1161,22 @@ function ProductDetailModal({ product, onClose }) {
   );
 }
 
+const DEFAULT_PRODUCT_IMAGE = "images/eateatsupplement.webp";
+
 function ProductThumb({ src, size = 48, square }) {
   const [broken, setBroken] = useState(false);
+  const [defaultBroken, setDefaultBroken] = useState(false);
+  const effectiveSrc = (!src || broken) ? (defaultBroken ? null : DEFAULT_PRODUCT_IMAGE) : src;
+  const handleError = () => {
+    if (!src || broken) setDefaultBroken(true);
+    else setBroken(true);
+  };
   if (square) {
-    if (!src || broken) return (<div style={styles.thumbSquarePlaceholder}><IImageOff size={28} color={C.line} /></div>);
-    return <img src={src} onError={() => setBroken(true)} style={styles.thumbSquareImg} alt="" />;
+    if (!effectiveSrc) return (<div style={styles.thumbSquarePlaceholder}><IImageOff size={28} color={C.line} /></div>);
+    return <img src={effectiveSrc} onError={handleError} style={styles.thumbSquareImg} alt="" />;
   }
-  if (!src || broken) return (<div style={{ ...styles.thumbPlaceholder, width: size, height: size }}><IImageOff size={Math.round(size * 0.4)} color={C.line} /></div>);
-  return <img src={src} onError={() => setBroken(true)} style={{ ...styles.thumbImg, width: size, height: size }} alt="" />;
+  if (!effectiveSrc) return (<div style={{ ...styles.thumbPlaceholder, width: size, height: size }}><IImageOff size={Math.round(size * 0.4)} color={C.line} /></div>);
+  return <img src={effectiveSrc} onError={handleError} style={{ ...styles.thumbImg, width: size, height: size }} alt="" />;
 }
 
 function IngredientEditor({ ingredients, onChange }) {
