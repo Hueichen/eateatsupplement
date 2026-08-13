@@ -503,11 +503,12 @@ function App() {
     setCheckLog((prev) => ({ ...prev, [dateKey]: next }));
     db.collection("users").doc(user.uid).collection("checklog").doc(dateKey).set(next).catch((e) => console.error(e));
 
-    // 勾選=剩餘份數-1；取消勾選=+1（還原）
+    // 勾選＝剩餘顆數 - 實際使用顆數；取消勾選＝加回來
     const supplementId = entryId.split("__")[0];
     const supplement = mySupplements.find((s) => s.id === supplementId);
     if (supplement && supplement.remainingServings !== undefined && supplement.remainingServings !== null && supplement.remainingServings !== "") {
-      const delta = wasChecked ? 1 : -1;
+      const units = supplement.dailyUnits !== undefined && supplement.dailyUnits !== null && supplement.dailyUnits !== "" ? Number(supplement.dailyUnits) : 1;
+      const delta = wasChecked ? units : -units;
       db.collection("users").doc(user.uid).collection("supplements").doc(supplementId)
         .update({ remainingServings: firebase.firestore.FieldValue.increment(delta) })
         .catch((e) => console.error(e));
@@ -731,7 +732,10 @@ function ChecklistView({ selectedDate, setSelectedDate, dayEntries, dayLog, togg
                   <div style={{ ...styles.pillDot, ...(checked ? { ...styles.pillDotChecked, background: slotColor, borderColor: slotColor } : {}) }}>{checked && <ICheck size={13} color="#fff" strokeWidth={3} />}</div>
                   <div style={styles.pillInfo}>
                     <span style={{ ...styles.pillName, ...(checked ? styles.pillNameChecked : {}) }}>{e.supplement.name}</span>
-                    <span style={styles.pillDose}>{e.supplement.dose}{e.supplement.meal ? ` · ${e.supplement.meal}` : ""}</span>
+                    <span style={styles.pillDose}>
+                      {e.supplement.dose}{e.supplement.meal ? ` · ${e.supplement.meal}` : ""}
+                      {e.supplement.dailyUnits && Number(e.supplement.dailyUnits) !== 1 ? ` · 預計吃${e.supplement.dailyUnits}顆` : ""}
+                    </span>
                   </div>
                 </button>
               );
@@ -811,7 +815,7 @@ function MineView({ mySupplements, onAdd, onRemove, onEdit }) {
                   <div style={styles.supplementDose}>{s.dose}</div>
                   {s.startDate && <div style={styles.supplementMeta}>開始服用：{s.startDate}</div>}
                   {s.dailyUnits && Number(s.dailyUnits) !== 1 && (
-                    <div style={styles.supplementMeta}>元素總表換算：每次吃 {s.dailyUnits} 顆</div>
+                    <div style={styles.supplementMeta}>實際使用：{s.dailyUnits}顆</div>
                   )}
                 </div>
               </div>
@@ -822,7 +826,7 @@ function MineView({ mySupplements, onAdd, onRemove, onEdit }) {
                 </div>
                 {hasServings && (
                   <span style={{ ...styles.servingsBadge, ...(empty ? styles.servingsBadgeEmpty : low ? styles.servingsBadgeLow : {}) }}>
-                    {empty ? "已用完" : `剩餘 ${s.remainingServings} 份`}
+                    {empty ? "已用完" : `剩餘 ${s.remainingServings} 顆`}
                   </span>
                 )}
               </div>
@@ -1289,18 +1293,18 @@ function AddToMineModal({ onClose, onSave, productLibrary, initial, title, submi
 
         <div style={styles.twoColRow}>
           <div style={{ flex: 1 }}>
-            <label style={styles.label}>總份數（選填）</label>
-            <input type="number" inputMode="numeric" style={styles.input} value={totalServings} onChange={(e) => setTotalServings(e.target.value)} placeholder="例如：90" />
+            <label style={styles.label}>總顆數（選填）</label>
+            <input type="number" inputMode="numeric" style={styles.input} value={totalServings} onChange={(e) => setTotalServings(e.target.value)} placeholder="例如：120" />
           </div>
           {isEdit && (
             <div style={{ flex: 1 }}>
-              <label style={styles.label}>剩餘份數</label>
+              <label style={styles.label}>剩餘顆數</label>
               <input type="number" inputMode="numeric" style={styles.input} value={remainingServings} onChange={(e) => setRemainingServings(e.target.value)} placeholder="例如：72" />
             </div>
           )}
         </div>
-        {!isEdit && <p style={styles.fieldHint}>填入總份數後，會自動當作目前的剩餘份數；之後在「每日服用」勾選一次會自動扣 1 份，取消勾選會加回來。</p>}
-        {isEdit && <p style={styles.fieldHint}>剩餘份數可以隨時手動修改（例如補貨、盤點誤差），每次在「每日服用」勾選會自動扣 1，取消勾選會加回 1。</p>}
+        {!isEdit && <p style={styles.fieldHint}>填入總顆數後，會自動當作目前的剩餘顆數；之後在「每日服用」勾選一次，會依「實際一次服用顆數」自動扣除（例如一次吃2顆就扣2顆），取消勾選會加回來。</p>}
+        {isEdit && <p style={styles.fieldHint}>剩餘顆數可以隨時手動修改（例如補貨、盤點誤差），每次在「每日服用」勾選會依「實際一次服用顆數」自動扣除，取消勾選會加回來。</p>}
 
         <label style={styles.label}>服用時段</label>
         <div style={styles.chipRow}>
