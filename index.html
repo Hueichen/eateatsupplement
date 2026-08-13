@@ -223,9 +223,8 @@ function convertAmount(amount, fromUnit, toUnit, nutrientName) {
 function summarizeIntake(mySupplements) {
   const map = {}; // bucketName -> { total, unit, sources: [{label, amount, unit, originalName}], hasUnconvertible: bool }
   mySupplements.forEach((s) => {
-    const labelUnits = s.labelUnits ? Number(s.labelUnits) : 1;
-    const actualUnits = s.actualUnits !== undefined && s.actualUnits !== null && s.actualUnits !== "" ? Number(s.actualUnits) : labelUnits;
-    const scale = labelUnits > 0 ? actualUnits / labelUnits : 1;
+    const dailyUnits = s.dailyUnits !== undefined && s.dailyUnits !== null && s.dailyUnits !== "" ? Number(s.dailyUnits) : 1;
+    const scale = Number.isFinite(dailyUnits) && dailyUnits > 0 ? dailyUnits : 1;
     (s.ingredients || []).forEach((ing) => {
       if (!ing.name || ing.amount === "" || ing.amount === undefined || ing.amount === null) return;
       const amountNum = Number(ing.amount) * scale;
@@ -241,7 +240,7 @@ function summarizeIntake(mySupplements) {
         map[bucketName].total += converted;
         map[bucketName].unit = canonicalUnit;
       }
-      const scaledLabel = scale !== 1 ? `${ing.amount}${ing.unit || ""} × ${actualUnits}/${labelUnits}顆` : `${ing.amount}${ing.unit || ""}`;
+      const scaledLabel = scale !== 1 ? `每顆${ing.amount}${ing.unit || ""} × ${scale}顆` : `${ing.amount}${ing.unit || ""}`;
       map[bucketName].sources.push({ label: s.name, amount: ing.amount, unit: ing.unit, originalName: ing.name !== bucketName ? ing.name : null, scaledLabel });
     });
   });
@@ -811,8 +810,8 @@ function MineView({ mySupplements, onAdd, onRemove, onEdit }) {
                   <div style={styles.supplementName}>{s.name}</div>
                   <div style={styles.supplementDose}>{s.dose}</div>
                   {s.startDate && <div style={styles.supplementMeta}>開始服用：{s.startDate}</div>}
-                  {s.labelUnits && s.actualUnits !== undefined && Number(s.actualUnits) !== Number(s.labelUnits) && (
-                    <div style={styles.supplementMeta}>元素總表換算：實際吃 {s.actualUnits}／標示 {s.labelUnits} 顆</div>
+                  {s.dailyUnits && Number(s.dailyUnits) !== 1 && (
+                    <div style={styles.supplementMeta}>元素總表換算：每次吃 {s.dailyUnits} 顆</div>
                   )}
                 </div>
               </div>
@@ -1104,7 +1103,7 @@ function ProductDetailModal({ product, onClose }) {
   ].filter(Boolean);
 
   return (
-    <div style={styles.modalOverlay} className="app-modal-overlay" onClick={onClose}>
+    <div style={styles.modalOverlay} className="app-modal-overlay">
       <div style={styles.modalCard} className="app-modal-card" onClick={(e) => e.stopPropagation()}>
         <div style={styles.modalHeader}>
           <span style={styles.modalTitle}>{p.name}</span>
@@ -1211,8 +1210,7 @@ function AddToMineModal({ onClose, onSave, productLibrary, initial, title, submi
   const [startDate, setStartDate] = useState(initial && initial.startDate ? initial.startDate : (isEdit ? "" : todayKey()));
   const [totalServings, setTotalServings] = useState(initial && initial.totalServings !== undefined && initial.totalServings !== null ? String(initial.totalServings) : "");
   const [remainingServings, setRemainingServings] = useState(initial && initial.remainingServings !== undefined && initial.remainingServings !== null ? String(initial.remainingServings) : "");
-  const [labelUnits, setLabelUnits] = useState(initial && initial.labelUnits !== undefined && initial.labelUnits !== null ? String(initial.labelUnits) : "1");
-  const [actualUnits, setActualUnits] = useState(initial && initial.actualUnits !== undefined && initial.actualUnits !== null ? String(initial.actualUnits) : "1");
+  const [dailyUnits, setDailyUnits] = useState(initial && initial.dailyUnits !== undefined && initial.dailyUnits !== null ? String(initial.dailyUnits) : "1");
 
   const toggleTime = (id) => setTimes((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
   const toggleMeal = (m) => setMeal((prev) => (prev === m ? "" : m));
@@ -1247,8 +1245,7 @@ function AddToMineModal({ onClose, onSave, productLibrary, initial, title, submi
     if (initial && initial.sourceProductId !== undefined) payload.sourceProductId = initial.sourceProductId;
     payload.startDate = startDate || null;
     payload.totalServings = totalServings.trim() === "" ? null : Number(totalServings);
-    payload.labelUnits = labelUnits.trim() === "" ? 1 : Number(labelUnits);
-    payload.actualUnits = actualUnits.trim() === "" ? payload.labelUnits : Number(actualUnits);
+    payload.dailyUnits = dailyUnits.trim() === "" ? 1 : Number(dailyUnits);
     if (isEdit) {
       // 編輯模式：剩餘份數由使用者直接指定
       payload.remainingServings = remainingServings.trim() === "" ? null : Number(remainingServings);
@@ -1260,7 +1257,7 @@ function AddToMineModal({ onClose, onSave, productLibrary, initial, title, submi
   };
 
   return (
-    <div style={styles.modalOverlay} className="app-modal-overlay" onClick={onClose}>
+    <div style={styles.modalOverlay} className="app-modal-overlay">
       <div style={styles.modalCard} className="app-modal-card" onClick={(e) => e.stopPropagation()}>
         <div style={styles.modalHeader}><span style={styles.modalTitle}>{title || "新增到我的保健品"}</span><button onClick={onClose} style={styles.iconBtnGhost}><IX size={18} color={C.muted} /></button></div>
         {lockDetails ? (
@@ -1280,20 +1277,12 @@ function AddToMineModal({ onClose, onSave, productLibrary, initial, title, submi
         <input style={styles.input} value={name} onChange={(e) => setName(e.target.value)} placeholder="例如：維生素D3 2000IU" />
         <label style={styles.label}>劑量 / 用法</label>
         <input style={styles.input} value={dose} onChange={(e) => setDose(e.target.value)} placeholder="例如：1顆" />
-        <label style={styles.label}>成分（選填）</label>
+        <label style={styles.label}>成分（選填，請填「每 1 顆」的含量）</label>
         <IngredientEditor ingredients={ingredients} onChange={setIngredients} />
 
-        <div style={styles.twoColRow}>
-          <div style={{ flex: 1 }}>
-            <label style={styles.label}>成分標示對應顆數</label>
-            <input type="number" inputMode="numeric" min="0" style={styles.input} value={labelUnits} onChange={(e) => setLabelUnits(e.target.value)} placeholder="例如：4" />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label style={styles.label}>實際一次服用顆數</label>
-            <input type="number" inputMode="numeric" min="0" style={styles.input} value={actualUnits} onChange={(e) => setActualUnits(e.target.value)} placeholder="例如：2" />
-          </div>
-        </div>
-        <p style={styles.fieldHint}>上面填的成分含量，是「幾顆」的量？你實際一次又吃幾顆？例如成分是 4 顆的含量，你實際只吃 2 顆，元素總表就會自動按比例（2/4）折半計算，不會誤算成你吃了整份。兩者一樣就不用改，預設都是 1。</p>
+        <label style={styles.label}>實際一次服用顆數</label>
+        <input type="number" inputMode="numeric" min="0" style={{ ...styles.input, maxWidth: 160 }} value={dailyUnits} onChange={(e) => setDailyUnits(e.target.value)} placeholder="例如：2" />
+        <p style={styles.fieldHint}>上面「成分」欄位請填每 1 顆的含量（例如每顆鈣 500mg）。這裡填你實際一次吃幾顆，元素總表就會自動算「每顆含量 × 顆數」的總和，例如每顆500mg吃2顆＝1000mg。預設 1 顆。</p>
 
         <label style={styles.label}>開始服用日期（選填）</label>
         <input type="date" style={styles.input} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
@@ -1356,7 +1345,7 @@ function AddProductModal({ onClose, onAdd }) {
   };
 
   return (
-    <div style={styles.modalOverlay} className="app-modal-overlay" onClick={onClose}>
+    <div style={styles.modalOverlay} className="app-modal-overlay">
       <div style={styles.modalCard} className="app-modal-card" onClick={(e) => e.stopPropagation()}>
         <div style={styles.modalHeader}><span style={styles.modalTitle}>登錄備品（公開）</span><button onClick={onClose} style={styles.iconBtnGhost}><IX size={18} color={C.muted} /></button></div>
         <p style={styles.helperText}>登錄後所有使用者都看得到這筆備品，只有你自己能刪除。</p>
@@ -1366,7 +1355,7 @@ function AddProductModal({ onClose, onAdd }) {
         <input style={styles.input} value={name} onChange={(e) => setName(e.target.value)} placeholder="例如：維生素D3 軟膠囊" />
         <label style={styles.label}>圖片連結（選填）</label>
         <input style={styles.input} value={image} onChange={(e) => setImage(e.target.value)} placeholder="https://..." />
-        <label style={styles.label}>成分（含數量與單位）</label>
+        <label style={styles.label}>成分（請填「每 1 顆」的含量與單位）</label>
         <IngredientEditor ingredients={ingredients} onChange={setIngredients} />
         <label style={styles.label}>每日用量</label>
         <input style={styles.input} value={dailyDose} onChange={(e) => setDailyDose(e.target.value)} placeholder="例如：每日1顆，隨餐服用" />
