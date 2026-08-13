@@ -220,6 +220,18 @@ function convertAmount(amount, fromUnit, toUnit, nutrientName) {
 }
 
 /* 彙整目前「我的保健品」清單中的所有成分，回傳每個成分的總量與是否超標 */
+/* 判斷這筆「我的保健品」是否已經開始服用：勾選「已開始服用」且（沒設開始日期，或開始日期已到） */
+function isSupplementActive(s) {
+  if (s.active === false) return false;
+  if (s.startDate) {
+    const start = new Date(s.startDate + "T00:00:00");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (start > today) return false;
+  }
+  return true;
+}
+
 function summarizeIntake(mySupplements) {
   const map = {}; // bucketName -> { total, unit, sources: [{label, amount, unit, originalName}], hasUnconvertible: bool }
   mySupplements.forEach((s) => {
@@ -425,6 +437,7 @@ function App() {
   const [editingMine, setEditingMine] = useState(null); // 我的保健品：編輯中的項目（null=非編輯）
   const [pendingLibraryProduct, setPendingLibraryProduct] = useState(null); // 從備品庫加入時，先讓使用者選時段
   const [showAddProduct, setShowAddProduct] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
   const [nutrientFilter, setNutrientFilter] = useState("全部");
   const [selectedDate, setSelectedDate] = useState(todayKey());
   const [compareIds, setCompareIds] = useState([]);
@@ -535,6 +548,11 @@ function App() {
     db.collection("productLibrary").add({ ...item, ownerUid: user.uid, ownerName: user.displayName || "匿名使用者", createdAt: firebase.firestore.FieldValue.serverTimestamp() })
       .then(() => setShowAddProduct(false)).catch((e) => alert("登錄失敗：" + e.message));
   };
+  const updateProduct = (id, ownerUid, item) => {
+    if (!user || user.uid !== ownerUid) { alert("只有登錄者本人可以編輯這筆備品。"); return; }
+    db.collection("productLibrary").doc(id).update(item)
+      .then(() => setEditingProduct(null)).catch((e) => alert("更新失敗：" + e.message));
+  };
   const removeProduct = (id, ownerUid) => {
     if (!user || user.uid !== ownerUid) { alert("只有登錄者本人可以刪除這筆備品。"); return; }
     db.collection("productLibrary").doc(id).delete().catch((e) => alert("刪除失敗：" + e.message));
@@ -577,7 +595,7 @@ function App() {
 
   const dayEntries = useMemo(() => {
     const entries = [];
-    mySupplements.forEach((s) => (s.times || []).forEach((t) => entries.push({ entryId: `${s.id}__${t}`, supplement: s, time: t })));
+    mySupplements.forEach((s) => { if (isSupplementActive(s)) (s.times || []).forEach((t) => entries.push({ entryId: `${s.id}__${t}`, supplement: s, time: t })); });
     return entries;
   }, [mySupplements]);
   const dayLog = checkLog[selectedDate] || {};
@@ -620,6 +638,7 @@ function App() {
             productLibrary={productLibrary} mySupplements={mySupplements} compareIds={compareIds} user={user}
             onToggleCompare={toggleCompare}
             onAddProduct={() => (user ? setShowAddProduct(true) : signIn())}
+            onEditProduct={(p) => setEditingProduct(p)}
             onRemoveProduct={removeProduct}
             onImportExcel={importFromExcel}
             importing={importing}
@@ -668,6 +687,15 @@ function App() {
         />
       )}
       {showAddProduct && <AddProductModal onClose={() => setShowAddProduct(false)} onAdd={addProduct} />}
+      {editingProduct && (
+        <AddProductModal
+          onClose={() => setEditingProduct(null)}
+          onAdd={(item) => updateProduct(editingProduct.id, editingProduct.ownerUid, item)}
+          initial={editingProduct}
+          title="編輯備品"
+          submitLabel="儲存變更"
+        />
+      )}
     </div>
   );
 }
@@ -776,7 +804,8 @@ function IntakeTable({ intake, title, helper }) {
 }
 
 function MineView({ mySupplements, onAdd, onRemove, onEdit }) {
-  const intake = React.useMemo(() => summarizeIntake(mySupplements), [mySupplements]);
+  const activeSupplements = React.useMemo(() => mySupplements.filter(isSupplementActive), [mySupplements]);
+  const intake = React.useMemo(() => summarizeIntake(activeSupplements), [activeSupplements]);
   const [sortMode, setSortMode] = useState("recent");
   const sortedSupplements = sortMode === "name" ? sortByName(mySupplements, (s) => s.name) : mySupplements;
   return (
@@ -787,7 +816,7 @@ function MineView({ mySupplements, onAdd, onRemove, onEdit }) {
       </div>
 
       {mySupplements.length > 0 && intake.length > 0 && (
-        <IntakeTable intake={intake} title="目前攝取元素總表" helper="依「我的保健品」清單中登記的成分加總，估算目前每日總攝取量，並比對建議上限。" />
+        <IntakeTable intake={intake} title="目前攝取元素總表" helper="只計算已開始服用的品項（未到開始服用日期或標記「尚未開始」的不列入），加總成分並比對建議上限。" />
       )}
 
       {mySupplements.length > 1 && (
@@ -805,8 +834,9 @@ function MineView({ mySupplements, onAdd, onRemove, onEdit }) {
           const hasServings = s.remainingServings !== undefined && s.remainingServings !== null && s.remainingServings !== "";
           const low = hasServings && Number(s.remainingServings) <= 5;
           const empty = hasServings && Number(s.remainingServings) <= 0;
+          const active = isSupplementActive(s);
           return (
-          <div key={s.id} style={styles.supplementCard}>
+          <div key={s.id} style={{ ...styles.supplementCard, ...(active ? {} : styles.supplementCardInactive) }}>
             <div style={styles.supplementCardTop}>
               <div style={{ display: "flex", gap: 10 }}>
                 <ProductThumb src={s.image} size={40} />
@@ -817,6 +847,7 @@ function MineView({ mySupplements, onAdd, onRemove, onEdit }) {
                   {s.dailyUnits && Number(s.dailyUnits) !== 1 && (
                     <div style={styles.supplementMeta}>實際使用：{s.dailyUnits}顆</div>
                   )}
+                  {!active && <span style={styles.inactiveBadge}>尚未開始服用</span>}
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
@@ -924,7 +955,7 @@ function ReferenceView({ categories, filter, setFilter, list }) {
   );
 }
 
-function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggleCompare, onAddProduct, onRemoveProduct, onAddToMine, onImportExcel, importing, favoriteIds, onToggleFavorite, showFavoritesOnly, onToggleShowFavoritesOnly }) {
+function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggleCompare, onAddProduct, onEditProduct, onRemoveProduct, onAddToMine, onImportExcel, importing, favoriteIds, onToggleFavorite, showFavoritesOnly, onToggleShowFavoritesOnly }) {
   const compareProducts = productLibrary.filter((p) => compareIds.includes(p.id));
   const [includeExisting, setIncludeExisting] = useState(true);
   const trialSupplements = includeExisting ? mySupplements : [];
@@ -1031,6 +1062,9 @@ function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggle
                 <label style={styles.compareCheckLabel}><input type="checkbox" checked={inCompare} onChange={() => onToggleCompare(p.id)} style={styles.checkboxNative} /> 勾選試算</label>
 
                 <button onClick={() => setDetailProduct(p)} style={styles.shopLinkBtn}><IInfo size={13} /> 查看詳情</button>
+                {canDelete && (
+                  <button onClick={() => onEditProduct(p)} style={styles.shopLinkBtn}><IPencil size={13} /> 編輯備品</button>
+                )}
                 <button onClick={() => onAddToMine(p)} style={styles.shopAddBtn}>{user ? "加入我的保健品" : "登入後加入"}</button>
               </div>
             </div>
@@ -1239,6 +1273,7 @@ function AddToMineModal({ onClose, onSave, productLibrary, initial, title, submi
   const [totalServings, setTotalServings] = useState(initial && initial.totalServings !== undefined && initial.totalServings !== null ? String(initial.totalServings) : "");
   const [remainingServings, setRemainingServings] = useState(initial && initial.remainingServings !== undefined && initial.remainingServings !== null ? String(initial.remainingServings) : "");
   const [dailyUnits, setDailyUnits] = useState(initial && initial.dailyUnits !== undefined && initial.dailyUnits !== null ? String(initial.dailyUnits) : "1");
+  const [active, setActive] = useState(initial && initial.active !== undefined ? initial.active : true);
 
   const toggleTime = (id) => setTimes((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
   const toggleMeal = (m) => setMeal((prev) => (prev === m ? "" : m));
@@ -1274,6 +1309,7 @@ function AddToMineModal({ onClose, onSave, productLibrary, initial, title, submi
     payload.startDate = startDate || null;
     payload.totalServings = totalServings.trim() === "" ? null : Number(totalServings);
     payload.dailyUnits = dailyUnits.trim() === "" ? 1 : Number(dailyUnits);
+    payload.active = active;
     if (isEdit) {
       // 編輯模式：剩餘份數由使用者直接指定
       payload.remainingServings = remainingServings.trim() === "" ? null : Number(remainingServings);
@@ -1315,6 +1351,12 @@ function AddToMineModal({ onClose, onSave, productLibrary, initial, title, submi
         <label style={styles.label}>開始服用日期（選填）</label>
         <input type="date" style={styles.input} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
 
+        <label style={styles.compareCheckLabel}>
+          <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} style={styles.checkboxNative} />
+          已開始服用
+        </label>
+        <p style={styles.fieldHint}>如果只是先把買好的備品加入清單，還沒開始吃，可以先取消勾選；取消後「每日服用」跟「目前攝取元素總表」都不會計入這筆，等真的開始吃了再回來勾選。如果有填「開始服用日期」，日期未到之前也會自動視為尚未開始，不用手動切換。</p>
+
         <div style={styles.twoColRow}>
           <div style={{ flex: 1 }}>
             <label style={styles.label}>總顆數（選填）</label>
@@ -1346,20 +1388,20 @@ function AddToMineModal({ onClose, onSave, productLibrary, initial, title, submi
   );
 }
 
-function AddProductModal({ onClose, onAdd }) {
-  const [brand, setBrand] = useState("");
-  const [name, setName] = useState("");
-  const [image, setImage] = useState("");
-  const [link, setLink] = useState("");
-  const [dailyDose, setDailyDose] = useState("");
-  const [spec, setSpec] = useState("");
-  const [form, setForm] = useState("");
-  const [channel, setChannel] = useState("");
-  const [channelUrl, setChannelUrl] = useState("");
-  const [note, setNote] = useState("");
-  const [tagsInput, setTagsInput] = useState("");
-  const [recommender, setRecommender] = useState("");
-  const [ingredients, setIngredients] = useState([{ name: "", amount: "", unit: "mg" }]);
+function AddProductModal({ onClose, onAdd, initial, title, submitLabel }) {
+  const [brand, setBrand] = useState(initial ? initial.brand || "" : "");
+  const [name, setName] = useState(initial ? initial.name || "" : "");
+  const [image, setImage] = useState(initial ? initial.image || "" : "");
+  const [link, setLink] = useState(initial ? initial.link || "" : "");
+  const [dailyDose, setDailyDose] = useState(initial ? initial.dailyDose || "" : "");
+  const [spec, setSpec] = useState(initial ? initial.spec || "" : "");
+  const [form, setForm] = useState(initial ? initial.form || "" : "");
+  const [channel, setChannel] = useState(initial ? initial.channel || "" : "");
+  const [channelUrl, setChannelUrl] = useState(initial ? initial.channelUrl || "" : "");
+  const [note, setNote] = useState(initial ? initial.note || "" : "");
+  const [tagsInput, setTagsInput] = useState(initial && initial.tags ? initial.tags.join(", ") : "");
+  const [recommender, setRecommender] = useState(initial ? initial.recommender || "" : "");
+  const [ingredients, setIngredients] = useState(initial && initial.ingredients && initial.ingredients.length ? initial.ingredients : [{ name: "", amount: "", unit: "mg" }]);
 
   const handleSubmit = () => {
     if (!name.trim()) return;
@@ -1375,8 +1417,8 @@ function AddProductModal({ onClose, onAdd }) {
   return (
     <div style={styles.modalOverlay} className="app-modal-overlay">
       <div style={styles.modalCard} className="app-modal-card" onClick={(e) => e.stopPropagation()}>
-        <div style={styles.modalHeader}><span style={styles.modalTitle}>登錄備品（公開）</span><button onClick={onClose} style={styles.iconBtnGhost}><IX size={18} color={C.muted} /></button></div>
-        <p style={styles.helperText}>登錄後所有使用者都看得到這筆備品，只有你自己能刪除。</p>
+        <div style={styles.modalHeader}><span style={styles.modalTitle}>{title || "登錄備品（公開）"}</span><button onClick={onClose} style={styles.iconBtnGhost}><IX size={18} color={C.muted} /></button></div>
+        <p style={styles.helperText}>{initial ? "編輯後所有使用者看到的內容都會更新，只有登錄者本人能編輯。" : "登錄後所有使用者都看得到這筆備品，只有你自己能刪除。"}</p>
         <label style={styles.label}>品牌</label>
         <input style={styles.input} value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="例如：GNC" />
         <label style={styles.label}>名稱</label>
@@ -1403,7 +1445,7 @@ function AddProductModal({ onClose, onAdd }) {
         <input style={styles.input} value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://..." />
         <label style={styles.label}>備註建議（選填）</label>
         <input style={styles.input} value={note} onChange={(e) => setNote(e.target.value)} placeholder="例如：適合缺貨時替代同成分產品" />
-        <button onClick={handleSubmit} style={styles.submitBtn} disabled={!name.trim()}>登錄備品</button>
+        <button onClick={handleSubmit} style={styles.submitBtn} disabled={!name.trim()}>{submitLabel || "登錄備品"}</button>
       </div>
     </div>
   );
@@ -1467,6 +1509,8 @@ const styles = {
   pillDose: { fontSize: "0.8894rem", color: C.muted, marginTop: 2 },
   cardList: { display: "flex", flexDirection: "column", gap: 10 },
   supplementCard: { background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 },
+  supplementCardInactive: { opacity: 0.65, background: C.paper },
+  inactiveBadge: { display: "inline-block", marginTop: 4, fontSize: "0.75rem", background: "#F0EBE0", border: `1px solid ${C.line}`, borderRadius: 10, padding: "2px 8px", color: C.muted, fontWeight: 600 },
   supplementCardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" },
   supplementName: { fontSize: "1.1058rem", fontWeight: 700 },
   supplementDose: { fontSize: "0.8894rem", color: C.muted, marginTop: 2 },
