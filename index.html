@@ -926,7 +926,9 @@ function ReferenceView({ categories, filter, setFilter, list }) {
 
 function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggleCompare, onAddProduct, onRemoveProduct, onAddToMine, onImportExcel, importing, favoriteIds, onToggleFavorite, showFavoritesOnly, onToggleShowFavoritesOnly }) {
   const compareProducts = productLibrary.filter((p) => compareIds.includes(p.id));
-  const trialIntake = React.useMemo(() => summarizeIntake(compareProducts), [compareProducts]);
+  const [includeExisting, setIncludeExisting] = useState(true);
+  const trialSupplements = includeExisting ? mySupplements : [];
+  const trialIntake = React.useMemo(() => summarizeIntake([...trialSupplements, ...compareProducts]), [trialSupplements, compareProducts]);
   const fileInputRef = React.useRef(null);
   const [tagFilter, setTagFilter] = useState("全部");
   const [sortMode, setSortMode] = useState("recent"); // recent | name
@@ -1036,9 +1038,23 @@ function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggle
         })}
       </div>
       {compareProducts.length > 0 && (
-        <IntakeTable intake={trialIntake} title="勾選品項元素試算" helper="僅加總目前勾選的備品成分（不含現有保健品），估算若都服用會攝取多少，並標示是否超過建議上限。" />
+        <div style={styles.includeExistingRow}>
+          <label style={styles.compareCheckLabel}>
+            <input type="checkbox" checked={includeExisting} onChange={() => setIncludeExisting((v) => !v)} style={styles.checkboxNative} />
+            計算時納入現有保健品（我的保健品清單）
+          </label>
+        </div>
       )}
-      {compareProducts.length > 0 && <ComparePanel compareProducts={compareProducts} mySupplements={mySupplements} />}
+      {compareProducts.length > 0 && (
+        <IntakeTable
+          intake={trialIntake}
+          title="勾選品項元素試算"
+          helper={includeExisting
+            ? "加總目前勾選的備品成分＋現有保健品，估算全部一起服用的總攝取量，並標示是否超過建議上限。"
+            : "僅加總目前勾選的備品成分（不含現有保健品），估算若單獨服用這些備品會攝取多少，並標示是否超過建議上限。"}
+        />
+      )}
+      {compareProducts.length > 0 && <ComparePanel compareProducts={compareProducts} mySupplements={trialSupplements} />}
       {detailProduct && <ProductDetailModal product={detailProduct} onClose={() => setDetailProduct(null)} />}
     </div>
   );
@@ -1539,6 +1555,7 @@ const styles = {
   smallSolidBtn: { fontSize: "0.8894rem", background: C.ink, color: "#fff", border: "none", borderRadius: 10, padding: "7px 12px", fontWeight: 600, cursor: "pointer" },
   comparePanel: { marginTop: 22, background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 16 },
   intakePanel: { background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 16, marginBottom: 16 },
+  includeExistingRow: { marginTop: 8, marginBottom: 10 },
   intakeGrid: { display: "flex", flexDirection: "column", gap: 8, marginTop: 4 },
   intakeRow: { background: C.paper, borderRadius: 10, padding: "10px 12px" },
   intakeRowOver: { background: C.avoidBg },
