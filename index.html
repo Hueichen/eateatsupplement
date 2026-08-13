@@ -822,7 +822,7 @@ function MineView({ mySupplements, onAdd, onRemove, onEdit }) {
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
                 <div style={{ display: "flex", gap: 2 }}>
                   <button onClick={() => onEdit(s)} style={styles.iconBtnGhost} title="編輯"><IPencil size={16} color={C.muted} /></button>
-                  <button onClick={() => onRemove(s.id)} style={styles.iconBtnGhost} title="刪除"><ITrash size={16} color={C.muted} /></button>
+                  <button onClick={() => { if (window.confirm(`確定要刪除「${s.name}」嗎？此動作無法復原。`)) onRemove(s.id); }} style={styles.iconBtnGhost} title="刪除"><ITrash size={16} color={C.muted} /></button>
                 </div>
                 {hasServings && (
                   <span style={{ ...styles.servingsBadge, ...(empty ? styles.servingsBadgeEmpty : low ? styles.servingsBadgeLow : {}) }}>
@@ -1011,7 +1011,7 @@ function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggle
                   <IHeart size={15} filled={isFavorite} color={isFavorite ? C.rust : C.muted} />
                 </button>
                 {canDelete && (
-                  <button onClick={() => onRemoveProduct(p.id, p.ownerUid)} style={styles.shopDeleteBtn} title="刪除"><ITrash size={14} color={C.rust} /></button>
+                  <button onClick={() => { if (window.confirm(`確定要刪除備品「${p.name}」嗎？此動作無法復原，其他人也會看不到這筆備品。`)) onRemoveProduct(p.id, p.ownerUid); }} style={styles.shopDeleteBtn} title="刪除"><ITrash size={14} color={C.rust} /></button>
                 )}
               </div>
               <div style={styles.shopCardBody}>
