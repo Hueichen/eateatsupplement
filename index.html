@@ -130,7 +130,7 @@ const IInfo = (p) => <Icon {...p}><circle cx="12" cy="12" r="9"/><line x1="12" y
    靜態資料庫：成分
    ========================================================= */
 const NUTRIENT_DB = [
-  { id: "vitd", name: "維生素D3", category: "維生素", func: "促進鈣吸收、支持骨骼與免疫系統", rda: "10–20 mcg (400–800 IU)", ul: "100 mcg (4000 IU)", unit: "mcg" , ulValue: 100, ulUnit: "mcg" , timing: ["早上", "隨餐"] },
+  { id: "vitd", name: "維生素D3", category: "維生素", func: "促進鈣吸收、支持骨骼與免疫系統", rda: "400–800 IU (10–20 mcg)", ul: "4000 IU (100 mcg)", unit: "IU" , ulValue: 4000, ulUnit: "IU" , timing: ["早上", "隨餐"] },
   { id: "vitk", name: "維生素K", category: "維生素", func: "凝血功能、骨骼代謝", rda: "90–120 mcg", ul: "無明確上限", unit: "mcg" , ulValue: null, ulUnit: "mcg" , timing: ["隨餐"] },
   { id: "niacin", name: "菸鹼素（B3）", category: "維生素", func: "能量代謝、皮膚與神經系統健康", rda: "14–16 mg", ul: "35 mg", unit: "mg" , ulValue: 35, ulUnit: "mg" , timing: ["早上", "隨餐"] },
   { id: "vita", name: "維生素A", category: "維生素", func: "視力健康、皮膚黏膜修復、免疫功能", rda: "700–900 mcg RAE", ul: "3000 mcg RAE", unit: "mcg" , ulValue: 3000, ulUnit: "mcg" , timing: ["隨餐"] },
@@ -152,9 +152,9 @@ const NUTRIENT_DB = [
   { id: "chromium", name: "鉻", category: "礦物質", func: "協助胰島素作用、醣類與脂質代謝", rda: "25–35 mcg", ul: "無明確上限", unit: "mcg" , ulValue: null, ulUnit: "mcg" , timing: ["隨餐"] },
   { id: "manganese", name: "錳", category: "礦物質", func: "骨骼形成、抗氧化酵素輔因子", rda: "1.8–2.3 mg", ul: "11 mg", unit: "mg" , ulValue: 11, ulUnit: "mg" , timing: ["隨餐"] },
   { id: "potassium", name: "鉀", category: "礦物質", func: "體液平衡、神經與肌肉功能、血壓調節", rda: "2600–3400 mg", ul: "無明確上限（腎功能不佳者需留意）", unit: "mg" , ulValue: null, ulUnit: "mg" , timing: ["隨餐"] },
-  { id: "omega3", name: "Omega-3 魚油", category: "脂肪酸", func: "心血管健康、抗發炎、腦部與視力發育", rda: "250–500 mg (EPA+DHA)", ul: "一般建議 <3000 mg", unit: "mg" , ulValue: 3000, ulUnit: "mg" , timing: ["晚上", "隨餐"] },
-  { id: "epa", name: "EPA", category: "脂肪酸", func: "Omega-3 脂肪酸之一，心血管與抗發炎保健", rda: "隨產品標示（常見 300–1000 mg）", ul: "一般建議 EPA+DHA 總量 <3000 mg", unit: "mg" , ulValue: null, ulUnit: "mg" , timing: ["晚上", "隨餐"] },
-  { id: "dha", name: "DHA", category: "脂肪酸", func: "Omega-3 脂肪酸之一，腦部與視力發育", rda: "隨產品標示（常見 200–600 mg）", ul: "一般建議 EPA+DHA 總量 <3000 mg", unit: "mg" , ulValue: null, ulUnit: "mg" , timing: ["晚上", "隨餐"] },
+  { id: "omega3", name: "Omega-3 魚油", category: "脂肪酸", func: "心血管健康、抗發炎、腦部與視力發育。涵蓋 EPA 與 DHA 兩種主要 Omega-3 脂肪酸，建議用量與比對用量皆以兩者加總計算。", rda: "250–500 mg (EPA+DHA)", ul: "一般建議 <3000 mg", unit: "mg" , ulValue: 3000, ulUnit: "mg" , timing: ["晚上", "隨餐"] },
+  { id: "epa", name: "EPA", category: "脂肪酸", func: "Omega-3 脂肪酸之一，心血管與抗發炎保健。比對用量時會與 DHA 一併計入「Omega-3 魚油」總量。", rda: "隨產品標示（常見 300–1000 mg）", ul: "併入 Omega-3 魚油總量計算（見下）", unit: "mg" , ulValue: null, ulUnit: "mg" , timing: ["晚上", "隨餐"] },
+  { id: "dha", name: "DHA", category: "脂肪酸", func: "Omega-3 脂肪酸之一，腦部與視力發育。比對用量時會與 EPA 一併計入「Omega-3 魚油」總量。", rda: "隨產品標示（常見 200–600 mg）", ul: "併入 Omega-3 魚油總量計算（見下）", unit: "mg" , ulValue: null, ulUnit: "mg" , timing: ["晚上", "隨餐"] },
   { id: "probiotic", name: "益生菌", category: "菌種", func: "腸道菌相平衡、消化與部分免疫調節", rda: "10–100 億 CFU", ul: "無明確上限", unit: "億CFU" , ulValue: null, ulUnit: "億CFU" , timing: ["早上", "空腹"] },
   { id: "coq10", name: "輔酶Q10", category: "類輔酶", func: "細胞能量產生、抗氧化，常與心血管保健併用", rda: "30–200 mg", ul: "一般建議 <1200 mg", unit: "mg" , ulValue: 1200, ulUnit: "mg" , timing: ["早上", "隨餐"] },
   { id: "collagen", name: "膠原蛋白", category: "蛋白質", func: "皮膚彈性、關節與結締組織支持", rda: "2500–10000 mg", ul: "無明確上限", unit: "mg" , ulValue: null, ulUnit: "mg" , timing: ["睡前", "空腹"] },
@@ -189,36 +189,55 @@ function getRecommender(p) {
   return "";
 }
 
-/* 將 amount 從 fromUnit 換算成 toUnit（僅支援公制重量單位互換），無法換算回傳 null */
-function convertAmount(amount, fromUnit, toUnit) {
+/* 特定成分的 IU↔mcg 換算係數（IU 對不同物質意義不同，僅對已知成分才換算，避免誤植） */
+const IU_MCG_FACTOR = { "維生素D3": 0.025 }; // 1 IU 維生素D3 = 0.025 mcg（即 40 IU = 1 mcg）
+
+/* 比對用量時，把個別成分歸併到同一個「總量桶」計算（例如 EPA、DHA 一起算進 Omega-3 魚油總量） */
+const NUTRIENT_GROUP_ALIAS = { "EPA": "Omega-3 魚油", "DHA": "Omega-3 魚油" };
+
+function toMcgBase(amount, unit, nutrientName) {
+  if (unit === "mg") return amount * 1000;
+  if (unit === "g") return amount * 1000000;
+  if (unit === "mcg") return amount;
+  if (unit === "IU" && IU_MCG_FACTOR[nutrientName]) return amount * IU_MCG_FACTOR[nutrientName];
+  return null;
+}
+function fromMcgBase(mcgAmount, unit, nutrientName) {
+  if (unit === "mg") return mcgAmount / 1000;
+  if (unit === "g") return mcgAmount / 1000000;
+  if (unit === "mcg") return mcgAmount;
+  if (unit === "IU" && IU_MCG_FACTOR[nutrientName]) return mcgAmount / IU_MCG_FACTOR[nutrientName];
+  return null;
+}
+/* 將 amount 從 fromUnit 換算成 toUnit（公制重量單位互換，加上少數已知成分的 IU 換算），無法換算回傳 null */
+function convertAmount(amount, fromUnit, toUnit, nutrientName) {
   if (!fromUnit || !toUnit) return null;
   if (fromUnit === toUnit) return amount;
-  const toMg = { mg: 1, g: 1000, mcg: 0.001 };
-  if (toMg[fromUnit] !== undefined && toMg[toUnit] !== undefined) {
-    return (amount * toMg[fromUnit]) / toMg[toUnit];
-  }
-  return null;
+  const mcg = toMcgBase(amount, fromUnit, nutrientName);
+  if (mcg === null) return null;
+  return fromMcgBase(mcg, toUnit, nutrientName);
 }
 
 /* 彙整目前「我的保健品」清單中的所有成分，回傳每個成分的總量與是否超標 */
 function summarizeIntake(mySupplements) {
-  const map = {}; // name -> { totalKnownUnit: number|null, unit, sources: [{label, amount, unit}], hasUnconvertible: bool }
+  const map = {}; // bucketName -> { total, unit, sources: [{label, amount, unit, originalName}], hasUnconvertible: bool }
   mySupplements.forEach((s) => {
     (s.ingredients || []).forEach((ing) => {
       if (!ing.name || ing.amount === "" || ing.amount === undefined || ing.amount === null) return;
       const amountNum = Number(ing.amount);
       if (Number.isNaN(amountNum)) return;
-      if (!map[ing.name]) map[ing.name] = { total: 0, unit: null, sources: [], hasUnconvertible: false };
-      const ref = nutrientByName(ing.name);
+      const bucketName = NUTRIENT_GROUP_ALIAS[ing.name] || ing.name;
+      if (!map[bucketName]) map[bucketName] = { total: 0, unit: null, sources: [], hasUnconvertible: false };
+      const ref = nutrientByName(bucketName);
       const canonicalUnit = ref ? ref.ulUnit || ref.unit : ing.unit;
-      const converted = convertAmount(amountNum, ing.unit, canonicalUnit);
+      const converted = convertAmount(amountNum, ing.unit, canonicalUnit, bucketName);
       if (converted === null) {
-        map[ing.name].hasUnconvertible = true;
+        map[bucketName].hasUnconvertible = true;
       } else {
-        map[ing.name].total += converted;
-        map[ing.name].unit = canonicalUnit;
+        map[bucketName].total += converted;
+        map[bucketName].unit = canonicalUnit;
       }
-      map[ing.name].sources.push({ label: s.name, amount: ing.amount, unit: ing.unit });
+      map[bucketName].sources.push({ label: s.name, amount: ing.amount, unit: ing.unit, originalName: ing.name !== bucketName ? ing.name : null });
     });
   });
   return Object.entries(map).map(([name, data]) => {
