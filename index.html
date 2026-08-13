@@ -964,6 +964,9 @@ function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggle
   const [tagFilter, setTagFilter] = useState("全部");
   const [sortMode, setSortMode] = useState("recent"); // recent | name
   const [detailProduct, setDetailProduct] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [tagsExpanded, setTagsExpanded] = useState(false);
+  const TAG_VISIBLE_LIMIT = 6;
 
   const allTags = React.useMemo(() => {
     const set = new Set();
@@ -973,6 +976,14 @@ function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggle
 
   let filteredLibrary = tagFilter === "全部" ? productLibrary : productLibrary.filter((p) => productTags(p).includes(tagFilter));
   if (showFavoritesOnly) filteredLibrary = filteredLibrary.filter((p) => favoriteIds.includes(p.id));
+  if (searchQuery.trim()) {
+    const q = searchQuery.trim().toLowerCase();
+    filteredLibrary = filteredLibrary.filter((p) => {
+      const haystack = [p.brand, p.name, p.note, p.spec, p.form, p.channel, ...(p.ingredients || []).map((i) => i.name), ...productTags(p)]
+        .filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(q);
+    });
+  }
   if (sortMode === "name") filteredLibrary = sortByName(filteredLibrary, (p) => p.name);
 
   return (
@@ -995,12 +1006,44 @@ function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggle
       </div>
       <p style={styles.helperText}>這是公用備品資料庫，所有人都能瀏覽；登入後才能新增或刪除自己登錄的項目，也能收藏喜歡的備品。缺貨時可快速比較各品牌備品，勾選「試算」可列出勾選品項的總元素表並標示是否超過每日用量，也會一併比對現有保健品。</p>
 
+      <div style={styles.searchBox}>
+        <IPackage size={16} color={C.muted} />
+        <input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="搜尋品牌、名稱、成分或標籤…"
+          style={styles.searchInput}
+        />
+        {searchQuery && (
+          <button onClick={() => setSearchQuery("")} style={styles.searchClearBtn} title="清除搜尋"><IX size={14} color={C.muted} /></button>
+        )}
+      </div>
+
       <div style={styles.toolbarRow}>
         {allTags.length > 1 ? (
           <div style={styles.filterRowInline}>
-            {allTags.map((t) => (
-              <button key={t} onClick={() => setTagFilter(t)} style={{ ...styles.filterChip, ...(tagFilter === t ? styles.filterChipActive : {}) }}>{t}</button>
-            ))}
+            {(() => {
+              const restTags = allTags.slice(1); // 扣掉「全部」
+              let shown = tagsExpanded ? restTags : restTags.slice(0, TAG_VISIBLE_LIMIT);
+              if (!tagsExpanded && tagFilter !== "全部" && !shown.includes(tagFilter)) {
+                shown = [tagFilter, ...shown.filter((t) => t !== tagFilter)];
+              }
+              const hiddenCount = restTags.length - shown.length;
+              return (
+                <React.Fragment>
+                  <button onClick={() => setTagFilter("全部")} style={{ ...styles.filterChip, ...(tagFilter === "全部" ? styles.filterChipActive : {}) }}>全部</button>
+                  {shown.map((t) => (
+                    <button key={t} onClick={() => setTagFilter(t)} style={{ ...styles.filterChip, ...(tagFilter === t ? styles.filterChipActive : {}) }}>{t}</button>
+                  ))}
+                  {hiddenCount > 0 && (
+                    <button onClick={() => setTagsExpanded(true)} style={styles.filterChipMore}>+{hiddenCount} 個標籤</button>
+                  )}
+                  {tagsExpanded && restTags.length > TAG_VISIBLE_LIMIT && (
+                    <button onClick={() => setTagsExpanded(false)} style={styles.filterChipMore}>收合標籤</button>
+                  )}
+                </React.Fragment>
+              );
+            })()}
           </div>
         ) : <div />}
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto", flexWrap: "wrap" }}>
@@ -1021,7 +1064,8 @@ function LibraryView({ productLibrary, mySupplements, compareIds, user, onToggle
 
       {productLibrary.length === 0 && <EmptyState text="還沒有任何人登錄備品。登入後點「登錄備品」記錄品牌、名稱、成分、購買連結與每日用量，缺貨時大家都能快速挑選替代品。" />}
       {productLibrary.length > 0 && filteredLibrary.length === 0 && showFavoritesOnly && <EmptyState text="還沒有收藏任何備品。點卡片右上角的愛心圖示即可收藏。" />}
-      {productLibrary.length > 0 && filteredLibrary.length === 0 && !showFavoritesOnly && <EmptyState text="這個標籤下沒有備品，換一個標籤看看。" />}
+      {productLibrary.length > 0 && filteredLibrary.length === 0 && !showFavoritesOnly && searchQuery.trim() && <EmptyState text="找不到符合搜尋的備品，換個關鍵字試試。" />}
+      {productLibrary.length > 0 && filteredLibrary.length === 0 && !showFavoritesOnly && !searchQuery.trim() && <EmptyState text="這個標籤下沒有備品，換一個標籤看看。" />}
 
       <div style={styles.productGrid} className="product-grid">
         {filteredLibrary.map((p) => {
@@ -1530,6 +1574,9 @@ const styles = {
   filterRow: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 },
   filterRowInline: { display: "flex", gap: 6, flexWrap: "wrap" },
   toolbarRow: { display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 14 },
+  searchBox: { display: "flex", alignItems: "center", gap: 8, background: C.card, border: `1px solid ${C.line}`, borderRadius: 20, padding: "9px 14px", marginBottom: 14 },
+  searchInput: { flex: 1, border: "none", outline: "none", background: "transparent", fontSize: "0.9615rem", color: C.ink, fontFamily: "'Noto Sans TC', sans-serif" },
+  searchClearBtn: { background: "transparent", border: "none", cursor: "pointer", padding: 2, flexShrink: 0 },
   sortRow: { display: "flex", justifyContent: "flex-end", marginBottom: 12 },
   sortGroup: { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginLeft: "auto" },
   sortLabel: { fontSize: "0.7212rem", color: C.muted, fontWeight: 600 },
@@ -1539,6 +1586,7 @@ const styles = {
   },
   filterChip: { fontSize: "0.8894rem", background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: "6px 12px", color: C.muted, cursor: "pointer", fontWeight: 600 },
   filterChipActive: { background: C.ink, color: "#fff", borderColor: C.ink },
+  filterChipMore: { fontSize: "0.8654rem", background: "transparent", border: `1px dashed ${C.line}`, borderRadius: 14, padding: "6px 12px", color: C.pine, cursor: "pointer", fontWeight: 600 },
   nutrientCard: { background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 14 },
   nutrientCardTop: { display: "flex", justifyContent: "space-between", alignItems: "center" },
   nutrientName: { fontSize: "1.1058rem", fontWeight: 700, fontFamily: "'Noto Serif TC', serif" },
@@ -1590,46 +1638,4 @@ const styles = {
   nutritionAmount: { fontFamily: "'JetBrains Mono', monospace", color: C.ink, fontWeight: 600 },
   detailList: { marginTop: 16, display: "flex", flexDirection: "column", gap: 10 },
   detailLine: { display: "flex", flexDirection: "column", gap: 2, borderBottom: `1px solid ${C.line}`, paddingBottom: 8 },
-  detailLabel: { fontSize: "0.75rem", color: C.muted, fontWeight: 700 },
-  detailValue: { fontSize: "0.9376rem", color: C.ink, lineHeight: 1.6, wordBreak: "break-word" },
-  productActionsRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, gap: 8, flexWrap: "wrap" },
-  compareCheckLabel: { display: "flex", alignItems: "center", gap: 6, fontSize: "0.9615rem", color: C.ink, fontWeight: 600, cursor: "pointer" },
-  checkboxNative: { width: 16, height: 16, accentColor: C.pine, cursor: "pointer" },
-  linkBtn: { display: "flex", alignItems: "center", gap: 4, fontSize: "0.8894rem", color: C.pine, border: `1px solid ${C.line}`, borderRadius: 10, padding: "6px 10px", textDecoration: "none", fontWeight: 600 },
-  smallSolidBtn: { fontSize: "0.8894rem", background: C.ink, color: "#fff", border: "none", borderRadius: 10, padding: "7px 12px", fontWeight: 600, cursor: "pointer" },
-  comparePanel: { marginTop: 22, background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 16 },
-  intakePanel: { background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 16, marginBottom: 16 },
-  includeExistingRow: { marginTop: 8, marginBottom: 10 },
-  intakeGrid: { display: "flex", flexDirection: "column", gap: 8, marginTop: 4 },
-  intakeRow: { background: C.paper, borderRadius: 10, padding: "10px 12px" },
-  intakeRowOver: { background: C.avoidBg },
-  intakeRowTop: { display: "flex", alignItems: "center", gap: 8 },
-  intakeName: { fontSize: "0.8894rem", fontWeight: 700, color: C.ink },
-  intakeAmount: { fontSize: "0.7932rem", color: C.muted, marginTop: 3, fontFamily: "'JetBrains Mono', monospace" },
-  intakeCaveat: { fontSize: "0.6971rem", color: C.muted, marginTop: 4 },
-  overBadge: { fontSize: "0.6731rem", background: C.rust, color: "#fff", borderRadius: 10, padding: "2px 8px", fontWeight: 700 },
-  okBadge: { fontSize: "0.6731rem", background: C.goodBg, color: C.pine, borderRadius: 10, padding: "2px 8px", fontWeight: 700 },
-  unknownBadge: { fontSize: "0.6731rem", background: C.paper, border: `1px solid ${C.line}`, color: C.muted, borderRadius: 10, padding: "2px 8px", fontWeight: 700 },
-  compareChip: { fontSize: "0.8173rem", background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 10px", color: C.ink, fontWeight: 600 },
-  compareOkBox: { fontSize: "0.9855rem", color: C.pine, background: C.goodBg, borderRadius: 10, padding: "10px 12px", marginTop: 10, lineHeight: 1.5 },
-  compareSubhead: { display: "flex", alignItems: "center", gap: 6, fontSize: "0.9615rem", fontWeight: 700, color: C.rust, marginBottom: 8 },
-  duplicateCard: { background: C.avoidBg, border: `1px solid #E6CBB9`, borderRadius: 12, padding: 12, marginBottom: 8 },
-  duplicateSources: { display: "flex", flexDirection: "column", gap: 3, marginTop: 6 },
-  duplicateSourceTag: { fontSize: "0.8654rem", color: C.ink, opacity: 0.85 },
-  modalOverlay: { position: "fixed", inset: 0, background: "rgba(32,52,44,0.4)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 50 },
-  modalCard: { background: C.paper, width: "100%", maxWidth: 480, borderRadius: "20px 20px 0 0", padding: 20, maxHeight: "85vh", overflowY: "auto" },
-  modalHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
-  modalTitle: { fontFamily: "'Noto Serif TC', serif", fontSize: "1.6562rem", fontWeight: 700 },
-  label: { display: "block", fontSize: "0.8894rem", color: C.muted, marginTop: 12, marginBottom: 6, fontWeight: 600 },
-  fieldHint: { fontSize: "0.8173rem", color: C.muted, lineHeight: 1.5, margin: "6px 0 0" },
-  twoColRow: { display: "flex", gap: 10, marginTop: 0 },
-  input: { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 10, border: `1px solid ${C.line}`, background: C.card, fontSize: "1.0577rem", fontFamily: "'Noto Sans TC', sans-serif", color: C.ink },
-  ingredientRow: { display: "flex", gap: 6, alignItems: "center", marginTop: 8 },
-  addIngredientBtn: { display: "flex", alignItems: "center", gap: 4, background: "transparent", border: `1px dashed ${C.line}`, borderRadius: 10, padding: "6px 12px", fontSize: "0.8894rem", color: C.pine, fontWeight: 600, cursor: "pointer", marginTop: 8 },
-  submitBtn: { width: "100%", marginTop: 20, padding: "13px 0", background: C.ink, color: "#fff", border: "none", borderRadius: 12, fontSize: "1.1058rem", fontWeight: 700, cursor: "pointer" },
-};
-
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-</script>
-</body>
-</html>
+  detailLabel: { fontSize: "0.75rem", color: C.muted, fontWeight: 70
